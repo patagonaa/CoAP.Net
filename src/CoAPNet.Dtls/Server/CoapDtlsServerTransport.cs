@@ -213,7 +213,7 @@ namespace CoAPNet.Dtls.Server
                     var cid = new byte[connectionIdLength.Value];
                     Array.Copy(data.Buffer, 11, cid, 0, connectionIdLength.Value);
 
-                    var sessionByCid = _sessions.Values.FirstOrDefault(x => cid.SequenceEqual(x.ConnectionId));
+                    var sessionByCid = _sessions.Values.FirstOrDefault(x => x.ConnectionId != null && cid.SequenceEqual(x.ConnectionId));
                     if (sessionByCid != null)
                     {
                         _logger.LogDebug("Found session by connection id. {OldEndPoint} -> {NewEndPoint}", sessionByCid.EndPoint, data.RemoteEndPoint);
