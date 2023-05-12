@@ -19,8 +19,6 @@ namespace CoAPDevices
             var port = Coap.PortDTLS;
             var identity = new BasicTlsPskIdentity("user", Encoding.UTF8.GetBytes("password"));
 
-            // Create a new client using a DTLS endpoint with the remote host and Identity
-            var client = new CoapClient(new CoapDtlsClientEndPoint(host, port, new ExamplePskDtlsClient(identity)));
             // Create a cancelation token that cancels after 1 minute
             var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(1));
 
@@ -38,24 +36,29 @@ namespace CoAPDevices
 
             try
             {
-                // Create a simple GET request
-                var message = new CoapMessage
+                // Create a new client using a DTLS endpoint with the remote host and Identity
+                using (var client = new CoapClient(new CoapDtlsClientEndPoint(host, port, new ExamplePskDtlsClient(identity))))
                 {
-                    Code = CoapMessageCode.Get,
-                    Type = CoapMessageType.Confirmable,
-                };
+                    // Create a simple GET request
+                    var message = new CoapMessage
+                    {
+                        Code = CoapMessageCode.Get,
+                        Type = CoapMessageType.Confirmable,
+                    };
 
-                // Get the /hello resource from localhost.
-                message.SetUri($"coaps://{host}:{port}/hello");
+                    // Get the /hello resource from localhost.
+                    message.SetUri($"coaps://{host}:{port}/hello");
 
-                Console.WriteLine($"Sending a {message.Code} {message.GetUri().GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped)} request");
-                await client.SendAsync(message, cancellationTokenSource.Token);
+                    Console.WriteLine($"Sending a {message.Code} {message.GetUri().GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped)} request");
+                    await client.SendAsync(message, cancellationTokenSource.Token);
 
-                // Wait for the server to respond.
-                var response = await client.ReceiveAsync(cancellationTokenSource.Token);
+                    // Wait for the server to respond.
+                    var response = await client.ReceiveAsync(cancellationTokenSource.Token);
 
-                // Output our response
-                Console.WriteLine($"Received a response from {response.Endpoint}\n{Encoding.UTF8.GetString(response.Message.Payload)}");
+                    // Output our response
+                    Console.WriteLine($"Received a response from {response.Endpoint}\n{Encoding.UTF8.GetString(response.Message.Payload)}");
+
+                }
             }
             catch (Exception ex)
             {
