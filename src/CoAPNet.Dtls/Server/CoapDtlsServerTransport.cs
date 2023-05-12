@@ -337,7 +337,7 @@ namespace CoAPNet.Dtls.Server
                 }
                 catch (TlsTimeoutException timeoutEx)
                 {
-                    _logger.LogWarning(timeoutEx, "Timeout while handling session");
+                    _logger.LogInformation(timeoutEx, "Timeout while handling session");
                 }
                 catch (TlsFatalAlert tlsAlert)
                 {
@@ -349,7 +349,7 @@ namespace CoAPNet.Dtls.Server
                 }
                 finally
                 {
-                    _logger.LogInformation("Connection from {EndPoint} closed", session.EndPoint);
+                    _logger.LogInformation("Connection from {EndPoint} closed after {ElapsedMilliseconds}ms", session.EndPoint, (DateTime.UtcNow - session.SessionStartTime).TotalMilliseconds);
                     _sessions.TryRemove(session.EndPoint, out _);
                 }
             }
