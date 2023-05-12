@@ -54,7 +54,7 @@ namespace CoAPNet.Dtls.Server
         }
 
         public IPEndPoint EndPoint { get; private set; }
-        public IPEndPoint PendingEndPoint { get; private set; }
+        private IPEndPoint PendingEndPoint { get; set; }
 
         public Uri BaseUri { get; }
         public IReadOnlyDictionary<string, object> ConnectionInfo { get; private set; }
