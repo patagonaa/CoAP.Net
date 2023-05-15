@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using Org.BouncyCastle.Tls;
@@ -36,23 +35,27 @@ namespace CoAPNet.Dtls.Client
         {
             return _sendLimit;
         }
-
-        public int Receive(byte[] buf, int off, int len, int waitMillis)
+        public int Receive(byte[] buf, int off, int len, int waitMillis) => Receive(buf.AsSpan(off, len), waitMillis);
+        public int Receive(Span<byte> buffer, int waitMillis)
         {
             IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.IPv6Any, 0);
             if (_socket.Client != null)
                 _socket.Client.ReceiveTimeout = waitMillis;
             var data = _socket.Receive(ref remoteEndPoint);
 
-            var readLen = Math.Min(len, data.Length);
-            Array.Copy(data, 0, buf, off, readLen);
+            var readLen = Math.Min(buffer.Length, data.Length);
+            data.AsSpan(0, readLen).CopyTo(buffer);
             return readLen;
         }
 
-        public void Send(byte[] buf, int off, int len)
+        public void Send(byte[] buf, int off, int len) => Send(buf.AsSpan(off, len));
+        public void Send(ReadOnlySpan<byte> buffer)
         {
-            var array = new ArraySegment<byte>(buf, off, len).ToArray();
-            _socket.Send(array, array.Length);
+#if NETSTANDARD2_0
+            _socket.Send(buffer.ToArray(), buffer.Length);
+#else
+            _socket.Send(buffer);
+#endif
         }
 
         public void Close()
