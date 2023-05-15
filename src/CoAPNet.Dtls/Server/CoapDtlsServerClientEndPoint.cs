@@ -148,7 +148,7 @@ namespace CoAPNet.Dtls.Server
 
         public DtlsSessionStatistics GetSessionStatistics()
         {
-            return new DtlsSessionStatistics(EndPoint.ToString(), ConnectionInfo, SessionStartTime, LastReceivedTime);
+            return new DtlsSessionStatistics(EndPoint.ToString(), ConnectionInfo, SessionStartTime, LastReceivedTime, ConnectionId != null);
         }
     }
 }
