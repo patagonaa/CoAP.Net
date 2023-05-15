@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using CoAPNet.Dtls.Server.Statistics;
 using Org.BouncyCastle.Tls;
 
 namespace CoAPNet.Dtls.Server
@@ -12,7 +13,7 @@ namespace CoAPNet.Dtls.Server
     {
         private readonly QueueDatagramTransport _udpTransport;
         private readonly Action<IPEndPoint, IPEndPoint> _replaceEndpointAction;
-        private DtlsTransport _dtlsTransport;
+        private DtlsTransport? _dtlsTransport;
 
         public CoapDtlsServerClientEndPoint(
             IPEndPoint endPoint,
@@ -54,10 +55,10 @@ namespace CoAPNet.Dtls.Server
         }
 
         public IPEndPoint EndPoint { get; private set; }
-        private IPEndPoint PendingEndPoint { get; set; }
+        private IPEndPoint? PendingEndPoint { get; set; }
 
         public Uri BaseUri { get; }
-        public IReadOnlyDictionary<string, object> ConnectionInfo { get; private set; }
+        public IReadOnlyDictionary<string, object>? ConnectionInfo { get; private set; }
 
         public bool IsSecure => true;
 
@@ -66,7 +67,7 @@ namespace CoAPNet.Dtls.Server
         public DateTime SessionStartTime { get; }
         public DateTime LastReceivedTime { get; private set; }
         public bool IsClosed { get; private set; }
-        public byte[] ConnectionId { get; private set; }
+        public byte[]? ConnectionId { get; private set; }
 
         public void Dispose()
         {
@@ -76,6 +77,9 @@ namespace CoAPNet.Dtls.Server
 
         public async Task<CoapPacket> ReceiveAsync(CancellationToken token)
         {
+            if (_dtlsTransport == null)
+                throw new InvalidOperationException("Session must be established before sending/receiving any data.");
+
             var bufLen = _dtlsTransport.GetReceiveLimit();
             var buffer = new byte[bufLen];
             while (!token.IsCancellationRequested)
@@ -102,7 +106,10 @@ namespace CoAPNet.Dtls.Server
 
         public Task SendAsync(CoapPacket packet, CancellationToken token)
         {
-            if (!_udpTransport.IsClosed && _dtlsTransport != null)
+            if (_dtlsTransport == null)
+                throw new InvalidOperationException("Session must be established before sending/receiving any data.");
+
+            if (!_udpTransport.IsClosed)
                 _dtlsTransport.Send(packet.Payload, 0, packet.Payload.Length);
             return Task.CompletedTask;
         }
@@ -137,6 +144,11 @@ namespace CoAPNet.Dtls.Server
         {
             _udpTransport.EnqueueReceived(datagram, endPoint);
             LastReceivedTime = DateTime.UtcNow;
+        }
+
+        public DtlsSessionStatistics GetSessionStatistics()
+        {
+            return new DtlsSessionStatistics(EndPoint.ToString(), ConnectionInfo, SessionStartTime, LastReceivedTime);
         }
     }
 }

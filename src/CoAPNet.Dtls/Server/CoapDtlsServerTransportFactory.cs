@@ -10,7 +10,7 @@ namespace CoAPNet.Dtls.Server
         private readonly ILoggerFactory _loggerFactory;
         private readonly IDtlsServerFactory _tlsServerFactory;
         private readonly DtlsServerConfig _config;
-        private CoapDtlsServerTransport _transport;
+        private CoapDtlsServerTransport? _transport;
 
         /// <param name="loggerFactory">LoggerFactory to use for transport logging</param>
         /// <param name="tlsServerFactory">a <see cref="IDtlsServerFactory"/> that creates the DtlsServer to use.</param>
@@ -34,7 +34,7 @@ namespace CoAPNet.Dtls.Server
             return _transport;
         }
 
-        public DtlsStatistics GetTransportStatistics()
+        public DtlsStatistics? GetTransportStatistics()
         {
             return _transport?.GetStatistics();
         }

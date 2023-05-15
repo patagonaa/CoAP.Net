@@ -25,7 +25,7 @@ namespace CoAPNet.Dtls.Server
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly BlockingCollection<UdpSendPacket> _sendQueue = new BlockingCollection<UdpSendPacket>();
 
-        private UdpClient _socket;
+        private UdpClient? _socket;
 
         private int _handshakeSuccessCount = 0;
         private int _handshakeTlsErrorCount = 0;
@@ -60,32 +60,24 @@ namespace CoAPNet.Dtls.Server
 
         internal DtlsStatistics GetStatistics()
         {
-            return new DtlsStatistics
-            {
-                Sessions = _sessions.GetSessions().Select(x => new DtlsSessionStatistics
-                {
-                    EndPoint = x.EndPoint.ToString(),
-                    ConnectionInfo = x.ConnectionInfo,
-                    LastReceivedTime = x.LastReceivedTime,
-                    SessionStartTime = x.SessionStartTime
-                }).ToList(),
-                HandshakesByResult = new Dictionary<string, uint>
+            var sessions = _sessions.GetSessions().Select(x => x.GetSessionStatistics()).ToList();
+            var handshakesByResult = new Dictionary<string, uint>
                 {
                     { "Success", (uint)_handshakeSuccessCount },
                     { "TlsError", (uint)_handshakeTlsErrorCount },
                     { "TimedOut", (uint)_handshakeTimeoutErrorCount },
                     { "Error", (uint)_handshakeErrorCount }
-                },
-                PacketsReceivedByType = new Dictionary<string, uint>
+                };
+            var packetsReceivedByType = new Dictionary<string, uint>
                 {
                     { "ByEndpoint", (uint)_packetsReceivedSessionByEp },
                     { "ByConnectionId", (uint)_packetsReceivedSessionByCid },
                     { "NewSession", (uint)_packetsReceivedNewSession },
                     { "UnknownCid", (uint)_packetsReceivedUnknownCid },
                     { "Invalid", (uint)_packetsReceivedInvalid }
-                },
-                PacketsSent = (uint)_packetsSent
-            };
+                };
+            var packetsSent = (uint)_packetsSent;
+            return new DtlsStatistics(sessions, handshakesByResult, packetsReceivedByType, packetsSent);
         }
 
         public Task BindAsync()
@@ -115,7 +107,7 @@ namespace CoAPNet.Dtls.Server
                     UdpReceiveResult data;
                     try
                     {
-                        data = await _socket.ReceiveAsync();
+                        data = await _socket!.ReceiveAsync();
                         _logger.LogDebug("Received DTLS Packet from {EndPoint}", data.RemoteEndPoint);
                     }
                     catch (ObjectDisposedException)
@@ -186,6 +178,8 @@ namespace CoAPNet.Dtls.Server
                     }
                     else if (packetSessionType == DtlsSessionFindResult.FoundByEndPoint || packetSessionType == DtlsSessionFindResult.FoundByConnectionId)
                     {
+                        if (session == null)
+                            throw new InvalidOperationException("session may not be null when session was found!");
                         // if there is an existing session, we pass the datagram to the session.
                         session.EnqueueDatagram(data.Buffer, data.RemoteEndPoint);
                         continue;
@@ -208,10 +202,12 @@ namespace CoAPNet.Dtls.Server
             {
                 try
                 {
-                    _sendQueue.TryTake(out UdpSendPacket toSend, Timeout.Infinite, _cts.Token);
+                    if (!_sendQueue.TryTake(out UdpSendPacket? toSend, Timeout.Infinite, _cts.Token))
+                        throw new InvalidOperationException("TryTake returned false");
+
                     Interlocked.Increment(ref _packetsSent);
 
-                    await _socket.SendAsync(toSend.Payload, toSend.Payload.Length, toSend.TargetEndPoint);
+                    await _socket!.SendAsync(toSend.Payload, toSend.Payload.Length, toSend.TargetEndPoint);
                     _logger.LogDebug("Sent DTLS Packet to {EndPoint}", toSend.TargetEndPoint);
                 }
                 catch (OperationCanceledException ex)
@@ -229,7 +225,7 @@ namespace CoAPNet.Dtls.Server
         {
             var state = new Dictionary<string, object>
                 {
-                    { "RemoteEndPoint", session?.EndPoint }
+                    { "RemoteEndPoint", session.EndPoint }
                 };
             using (_logger.BeginScope(state))
             {
@@ -265,12 +261,7 @@ namespace CoAPNet.Dtls.Server
                     {
                         _logger.LogInformation("New TLS connection from {EndPoint}", session.EndPoint);
 
-                        var connectionInfo = new CoapDtlsConnectionInformation
-                        {
-                            LocalEndpoint = _endPoint,
-                            RemoteEndpoint = session,
-                            TlsServer = server
-                        };
+                        var connectionInfo = new CoapDtlsConnectionInformation(_endPoint, session, server);
 
                         while (!session.IsClosed && !_cts.IsCancellationRequested)
                         {

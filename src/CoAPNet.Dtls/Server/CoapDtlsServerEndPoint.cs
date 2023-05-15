@@ -14,7 +14,7 @@ namespace CoAPNet.Dtls.Server
         public Uri BaseUri { get; }
         public IPEndPoint IPEndPoint { get; }
 
-        public CoapDtlsServerEndPoint(IPAddress address = null, int port = Coap.PortDTLS)
+        public CoapDtlsServerEndPoint(IPAddress? address = null, int port = Coap.PortDTLS)
         {
             address = address ?? IPAddress.IPv6Any;
 

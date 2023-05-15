@@ -21,6 +21,7 @@
         <Configurations>Debug;Release;AppVeyor</Configurations>
         <Copyright>Copyright © Roman Vaughan 2017</Copyright>
         <PackageLicenseUrl>https://raw.githubusercontent.com/NZSmartie/CoAP.Net/master/LICENSE</PackageLicenseUrl>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <PropertyGroup>

@@ -31,7 +31,7 @@ namespace CoAPNet.Dtls.Server
             return _sessionsByEp.Values;
         }
 
-        public DtlsSessionFindResult TryFindSession(UdpReceiveResult data, out CoapDtlsServerClientEndPoint session)
+        public DtlsSessionFindResult TryFindSession(UdpReceiveResult data, out CoapDtlsServerClientEndPoint? session)
         {
             // this is required because there may be packets with a cid before we have been notified of the cid by the session.
             // once the session is accepted, we just search by cid / endpoint (depending on whether the packet or session use cid or not)
@@ -41,7 +41,7 @@ namespace CoAPNet.Dtls.Server
                 return DtlsSessionFindResult.FoundByEndPoint;
             }
 
-            byte[] cid;
+            byte[]? cid;
             try
             {
                 cid = GetConnectionId(data.Buffer);
@@ -90,7 +90,7 @@ namespace CoAPNet.Dtls.Server
             return DtlsSessionFindResult.NewSession;
         }
 
-        private byte[] GetConnectionId(byte[] packet)
+        private byte[]? GetConnectionId(byte[] packet)
         {
             if (!_connectionIdLength.HasValue)
                 return null;
@@ -171,7 +171,7 @@ namespace CoAPNet.Dtls.Server
 
         private class ConnectionIdComparer : IEqualityComparer<byte[]>
         {
-            public bool Equals(byte[] x, byte[] y)
+            public bool Equals(byte[]? x, byte[]? y)
             {
                 return StructuralComparisons.StructuralEqualityComparer.Equals(x, y);
             }
