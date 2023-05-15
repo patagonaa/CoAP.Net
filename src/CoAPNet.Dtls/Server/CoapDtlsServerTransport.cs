@@ -225,7 +225,7 @@ namespace CoAPNet.Dtls.Server
         {
             var state = new Dictionary<string, object>
                 {
-                    { "RemoteEndPoint", session.EndPoint }
+                    { "InitialEndPoint", session.EndPoint }
                 };
             using (_logger.BeginScope(state))
             {
@@ -259,16 +259,20 @@ namespace CoAPNet.Dtls.Server
 
                     using (session.ConnectionInfo != null ? _logger.BeginScope(session.ConnectionInfo) : null)
                     {
-                        _logger.LogInformation("New TLS connection from {EndPoint}", session.EndPoint);
+                        _logger.LogInformation("New TLS connection from {RemoteEndPoint}", session.EndPoint);
 
                         var connectionInfo = new CoapDtlsConnectionInformation(_endPoint, session, server);
 
                         while (!session.IsClosed && !_cts.IsCancellationRequested)
                         {
                             var packet = await session.ReceiveAsync(_cts.Token);
-                            _logger.LogDebug("Handling CoAP Packet from {EndPoint}", session.EndPoint);
-                            await _coapHandler.ProcessRequestAsync(connectionInfo, packet.Payload);
-                            _logger.LogDebug("CoAP request from {EndPoint} handled!", session.EndPoint);
+
+                            using (_logger.BeginScope(new Dictionary<string, object> { { "RemoteEndPoint", session.EndPoint } }))
+                            {
+                                _logger.LogDebug("Handling CoAP Packet");
+                                await _coapHandler.ProcessRequestAsync(connectionInfo, packet.Payload);
+                                _logger.LogDebug("CoAP request handled!", session.EndPoint);
+                            }
                         }
                     }
                 }

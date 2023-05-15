@@ -56,10 +56,6 @@ namespace CoAPNet.Dtls.Server
             {
                 if (_sessionsByCid.TryGetValue(cid, out var sessionByCid))
                 {
-                    var endpointChanged = !sessionByCid.EndPoint.Equals(data.RemoteEndPoint);
-                    if (endpointChanged)
-                        _logger.LogDebug("Found session by connection id. {OldEndPoint} -> {NewEndPoint}", sessionByCid.EndPoint, data.RemoteEndPoint);
-
                     session = sessionByCid;
                     return DtlsSessionFindResult.FoundByConnectionId;
                 }
@@ -76,8 +72,9 @@ namespace CoAPNet.Dtls.Server
                     // Packet without cid for session with cid.
                     // This could either be an issue with the client or this endpoint has been reused for another client (NAT issue).
                     // We drop the packet in this case so the client can try again with another endpoint.
+                    // Another solution might be to remove sessions from _sessionsByEp after a connection id is negotiated (but this would require some other changes as well).
 
-                    _logger.LogInformation("Got packet without cid for session with cid from {EndPoint}. Discarding.", data.RemoteEndPoint);
+                    _logger.LogWarning("Got packet without cid for session with cid from {EndPoint}. Discarding.", data.RemoteEndPoint);
                     session = null;
                     return DtlsSessionFindResult.Invalid;
                 }
