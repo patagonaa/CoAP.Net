@@ -29,6 +29,7 @@
 
     <ItemGroup>
       <PackageReference Include="BouncyCastle.Cryptography" Version="2.2.0" />
+      <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />
     </ItemGroup>
 
     <ItemGroup>

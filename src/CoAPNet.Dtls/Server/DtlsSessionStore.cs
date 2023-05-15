@@ -61,7 +61,7 @@ namespace CoAPNet.Dtls.Server
                         _logger.LogDebug("Found session by connection id. {OldEndPoint} -> {NewEndPoint}", sessionByCid.EndPoint, data.RemoteEndPoint);
 
                     session = sessionByCid;
-                    return endpointChanged ? DtlsSessionFindResult.FoundByConnectionId : DtlsSessionFindResult.FoundByEndPoint;
+                    return DtlsSessionFindResult.FoundByConnectionId;
                 }
 
                 session = null;

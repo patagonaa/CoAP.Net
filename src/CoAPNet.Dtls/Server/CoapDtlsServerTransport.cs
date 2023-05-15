@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,10 +15,10 @@ namespace CoAPNet.Dtls.Server
     {
         private const int NetworkMtu = 1500;
 
-        private readonly TimeSpan _sessionTimeout;
         private readonly CoapDtlsServerEndPoint _endPoint;
         private readonly ICoapHandler _coapHandler;
         private readonly IDtlsServerFactory _tlsServerFactory;
+        private readonly DtlsServerConfig _config;
         private readonly ILogger<CoapDtlsServerTransport> _logger;
         private readonly DtlsServerProtocol _serverProtocol;
         private readonly DtlsSessionStore _sessions;
@@ -46,12 +45,12 @@ namespace CoAPNet.Dtls.Server
             ICoapHandler coapHandler,
             IDtlsServerFactory tlsServerFactory,
             ILoggerFactory loggerFactory,
-            TimeSpan sessionTimeout)
+            DtlsServerConfig config)
         {
             _endPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
             _coapHandler = coapHandler ?? throw new ArgumentNullException(nameof(coapHandler));
             _tlsServerFactory = tlsServerFactory ?? throw new ArgumentNullException(nameof(tlsServerFactory));
-            _sessionTimeout = sessionTimeout;
+            _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = loggerFactory.CreateLogger<CoapDtlsServerTransport>();
 
             _serverProtocol = new DtlsServerProtocol();
@@ -322,7 +321,8 @@ namespace CoAPNet.Dtls.Server
                     int cleaned = 0;
                     foreach (var session in _sessions.GetSessions())
                     {
-                        if (session.LastReceivedTime < DateTime.UtcNow - _sessionTimeout)
+                        var sessionTimeout = session.ConnectionId != null ? _config.SessionTimeoutWithCid : _config.SessionTimeout;
+                        if (session.LastReceivedTime < DateTime.UtcNow - sessionTimeout)
                         {
                             session.Dispose();
                             cleaned++;
