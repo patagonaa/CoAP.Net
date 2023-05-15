@@ -11,6 +11,7 @@ using Org.BouncyCastle.Tls;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Tls.Crypto.Impl.BC;
 using Org.BouncyCastle.Security;
+using Microsoft.Extensions.Options;
 
 namespace CoAPDevices
 {
@@ -41,7 +42,7 @@ namespace CoAPDevices
             var loggerFactory = LoggerFactory.Create(x => x.AddConsole());
 
             // Create a new Dtls transport factory.
-            var myTransportFactory = new CoapDtlsServerTransportFactory(loggerFactory, new ExampleDtlsServerFactory(), TimeSpan.FromHours(24));
+            var myTransportFactory = new CoapDtlsServerTransportFactory(loggerFactory, new ExampleDtlsServerFactory(), new OptionsWrapper<DtlsServerConfig>(new DtlsServerConfig()));
 
             // Create a new CoapServer using DTLS as it's base transport
             var myServer = new CoapServer(myTransportFactory, loggerFactory.CreateLogger<CoapServer>());

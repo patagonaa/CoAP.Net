@@ -4,7 +4,6 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Org.BouncyCastle.Tls;
-using Org.BouncyCastle.Security;
 
 namespace CoAPNet.Dtls.Client
 {
@@ -13,7 +12,7 @@ namespace CoAPNet.Dtls.Client
         private const int NetworkMtu = 1500;
 
         private readonly TlsClient _tlsClient;
-        private DtlsTransport _datagramTransport;
+        private DtlsTransport? _datagramTransport;
         private bool _isConnected = false;
 
         public CoapDtlsClientEndPoint(string server, int port, TlsClient tlsClient)
@@ -41,6 +40,9 @@ namespace CoAPNet.Dtls.Client
         {
             EnsureConnected();
 
+            if (_datagramTransport == null)
+                throw new InvalidOperationException("Session must be established before sending/receiving any data.");
+
             var bufLen = _datagramTransport.GetReceiveLimit();
             var buffer = new byte[bufLen];
             while (!token.IsCancellationRequested)
@@ -66,6 +68,9 @@ namespace CoAPNet.Dtls.Client
         public Task SendAsync(CoapPacket packet, CancellationToken token)
         {
             EnsureConnected();
+
+            if (_datagramTransport == null)
+                throw new InvalidOperationException("Session must be established before sending/receiving any data.");
 
             var bytes = packet.Payload;
             _datagramTransport.Send(bytes, 0, bytes.Length);

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>netstandard2.0</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0;net60</TargetFrameworks>
         <PackageId>NZSmartie.CoAPNet.Dtls</PackageId>
         <LangVersion>latest</LangVersion>
         <Version>0.13.1</Version>
@@ -21,6 +21,7 @@
         <Configurations>Debug;Release;AppVeyor</Configurations>
         <Copyright>Copyright © Roman Vaughan 2017</Copyright>
         <PackageLicenseUrl>https://raw.githubusercontent.com/NZSmartie/CoAP.Net/master/LICENSE</PackageLicenseUrl>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -29,6 +30,7 @@
 
     <ItemGroup>
       <PackageReference Include="BouncyCastle.Cryptography" Version="2.2.0" />
+      <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />
     </ItemGroup>
 
     <ItemGroup>

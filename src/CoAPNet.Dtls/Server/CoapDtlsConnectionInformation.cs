@@ -4,8 +4,15 @@ namespace CoAPNet.Dtls.Server
 {
     public class CoapDtlsConnectionInformation : ICoapConnectionInformation
     {
-        public ICoapEndpoint LocalEndpoint { get; set; }
-        public ICoapEndpoint RemoteEndpoint { get; set; }
-        public TlsServer TlsServer { get; set; }
+        public CoapDtlsConnectionInformation(ICoapEndpoint localEndpoint, ICoapEndpoint remoteEndpoint, TlsServer tlsServer)
+        {
+            LocalEndpoint = localEndpoint;
+            RemoteEndpoint = remoteEndpoint;
+            TlsServer = tlsServer;
+        }
+
+        public ICoapEndpoint LocalEndpoint { get; }
+        public ICoapEndpoint RemoteEndpoint { get; }
+        public TlsServer TlsServer { get; }
     }
 }

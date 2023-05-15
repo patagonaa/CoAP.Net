@@ -73,7 +73,8 @@ namespace CoAPNet.Dtls.Server
             }
         }
 
-        public int Receive(byte[] buf, int off, int len, int waitMillis)
+        public int Receive(byte[] buf, int off, int len, int waitMillis) => Receive(buf.AsSpan(off, len), waitMillis);
+        public int Receive(Span<byte> buffer, int waitMillis)
         {
             try
             {
@@ -88,8 +89,8 @@ namespace CoAPNet.Dtls.Server
                 _receiveCallback(item.EndPoint);
 
                 var data = item.Data;
-                var readLen = Math.Min(len, data.Length);
-                Array.Copy(data, 0, buf, off, readLen);
+                var readLen = Math.Min(buffer.Length, data.Length);
+                data.AsSpan(0, readLen).CopyTo(buffer);
                 return readLen;
             }
             catch (OperationCanceledException)
@@ -102,14 +103,15 @@ namespace CoAPNet.Dtls.Server
             }
         }
 
-        public void Send(byte[] buf, int off, int len)
+        public void Send(byte[] buf, int off, int len) => Send(buf.AsSpan(off, len));
+        public void Send(ReadOnlySpan<byte> buffer)
         {
             try
             {
                 CloseLock.EnterReadLock();
                 if (IsClosed)
                     throw new DtlsConnectionClosedException(); // throw is important here, so DtlsServer.Accept() throws when the connection is closed and the client doesn't answer
-                _sendCallback(new ArraySegment<byte>(buf, off, len).ToArray());
+                _sendCallback(buffer.ToArray());
             }
             finally
             {
