@@ -12,6 +12,7 @@ namespace CoAPNet.Dtls.Server
     {
         private readonly QueueDatagramTransport _udpTransport;
         private readonly Action<IPEndPoint, IPEndPoint> _replaceEndpointAction;
+        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         /// <summary>
         /// This semaphore is released whenever a packet has arrived or has been processed.
         /// This way, we don't have to have a thread for each connection just waiting for a packet to arrive.
@@ -76,27 +77,32 @@ namespace CoAPNet.Dtls.Server
 
         public void Dispose()
         {
-            _dtlsTransport?.Close();
-            _packetsReceivedSemaphore?.Dispose();
             IsClosed = true;
+            _dtlsTransport?.Close();
+            _cts.Cancel();
+            _cts.Dispose();
         }
 
-        public async Task<CoapPacket> ReceiveAsync(CancellationToken token)
+        public async Task<CoapPacket> ReceiveAsync(CancellationToken outerToken)
         {
             if (_dtlsTransport == null || _packetsReceivedSemaphore == null)
                 throw new InvalidOperationException("Session must be established before sending/receiving any data.");
 
+            if (IsClosed || _udpTransport.IsClosed || _dtlsTransport == null)
+                throw new DtlsConnectionClosedException();
+
+            using var cancelSource = CancellationTokenSource.CreateLinkedTokenSource(outerToken, _cts.Token);
             var bufLen = _dtlsTransport.GetReceiveLimit();
             var buffer = new byte[bufLen];
             while (true)
             {
-                if (_udpTransport.IsClosed || _dtlsTransport == null)
+                if (IsClosed || _udpTransport.IsClosed || _dtlsTransport == null)
                     throw new DtlsConnectionClosedException();
 
-                token.ThrowIfCancellationRequested();
+                cancelSource.Token.ThrowIfCancellationRequested();
 
                 // if all queued packets have been processed (semaphore count is 0), wait asynchronously until another packet arrives
-                await _packetsReceivedSemaphore.WaitAsync(token);
+                await _packetsReceivedSemaphore.WaitAsync(cancelSource.Token);
 
                 var receiveTimeout = 1; // we don't want to block here, 0 means never timeout, so we just wait 1ms
                 int received = _dtlsTransport.Receive(buffer, 0, bufLen, receiveTimeout, RecordCallback);
