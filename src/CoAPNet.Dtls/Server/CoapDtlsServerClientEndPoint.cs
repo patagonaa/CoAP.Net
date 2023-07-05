@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,6 +12,12 @@ namespace CoAPNet.Dtls.Server
     {
         private readonly QueueDatagramTransport _udpTransport;
         private readonly Action<IPEndPoint, IPEndPoint> _replaceEndpointAction;
+        /// <summary>
+        /// This semaphore is released whenever a packet has arrived or has been processed.
+        /// This way, we don't have to have a thread for each connection just waiting for a packet to arrive.
+        /// Instead, we can asynchronously wait for the semaphore to be released by an arriving packet.
+        /// </summary>
+        private SemaphoreSlim? _packetsReceivedSemaphore;
         private DtlsTransport? _dtlsTransport;
 
         public CoapDtlsServerClientEndPoint(
@@ -72,36 +77,44 @@ namespace CoAPNet.Dtls.Server
         public void Dispose()
         {
             _dtlsTransport?.Close();
+            _packetsReceivedSemaphore?.Dispose();
             IsClosed = true;
         }
 
         public async Task<CoapPacket> ReceiveAsync(CancellationToken token)
         {
-            if (_dtlsTransport == null)
+            if (_dtlsTransport == null || _packetsReceivedSemaphore == null)
                 throw new InvalidOperationException("Session must be established before sending/receiving any data.");
 
             var bufLen = _dtlsTransport.GetReceiveLimit();
             var buffer = new byte[bufLen];
-            while (!token.IsCancellationRequested)
+            while (true)
             {
                 if (_udpTransport.IsClosed || _dtlsTransport == null)
                     throw new DtlsConnectionClosedException();
 
-                // we can't cancel waiting for a packet (BouncyCastle doesn't support this), so there will be a bit of delay between cancelling and actually stopping trying to receive.
-                // there is a wait timeout of 5000ms to close the CoapEndPoint, this has to be less than that.
-                // also, we use a long running task here so we don't block the calling thread till we're done waiting, but start a new one and yield instead
-                int received = await Task.Factory.StartNew(() => _dtlsTransport.Receive(buffer, 0, bufLen, 4000, RecordCallback), TaskCreationOptions.LongRunning);
+                token.ThrowIfCancellationRequested();
+
+                // if all queued packets have been processed (semaphore count is 0), wait asynchronously until another packet arrives
+                await _packetsReceivedSemaphore.WaitAsync(token);
+
+                var receiveTimeout = 1; // we don't want to block here, 0 means never timeout, so we just wait 1ms
+                int received = _dtlsTransport.Receive(buffer, 0, bufLen, receiveTimeout, RecordCallback);
                 if (received > 0)
                 {
-                    return await Task.FromResult(new CoapPacket
+                    // One packet may contain multiple records.
+                    // For that case, we want to run Receive() another time to make sure BouncyCastle's internal receive-queue is empty.
+                    SignalPossibleReceivedPacket();
+
+                    var payload = new byte[received];
+                    Array.Copy(buffer, payload, received);
+                    return new CoapPacket
                     {
-                        Payload = new ArraySegment<byte>(buffer, 0, received).ToArray(),
+                        Payload = payload,
                         Endpoint = this
-                    });
+                    };
                 }
             }
-
-            throw new OperationCanceledException();
         }
 
         public Task SendAsync(CoapPacket packet, CancellationToken token)
@@ -128,6 +141,11 @@ namespace CoAPNet.Dtls.Server
         {
             _dtlsTransport = serverProtocol.Accept(server, _udpTransport);
 
+            // Allow Receive() to run at least once in case there is still a record in BouncyCastle's record queue
+            // This might be necessary if there was an "application_data" record transmitted together with the handshake "finished" record
+            var initialReceiveRecordsCount = Math.Min(_udpTransport.QueueCount, 1);
+            _packetsReceivedSemaphore = new SemaphoreSlim(initialReceiveRecordsCount);
+
             if (server is IDtlsServerWithConnectionId serverWithCid)
             {
                 ConnectionId = serverWithCid.GetConnectionId();
@@ -143,7 +161,13 @@ namespace CoAPNet.Dtls.Server
         public void EnqueueDatagram(byte[] datagram, IPEndPoint endPoint)
         {
             _udpTransport.EnqueueReceived(datagram, endPoint);
+            SignalPossibleReceivedPacket();
             LastReceivedTime = DateTime.UtcNow;
+        }
+
+        private void SignalPossibleReceivedPacket()
+        {
+            _packetsReceivedSemaphore?.Release();
         }
 
         public DtlsSessionStatistics GetSessionStatistics()

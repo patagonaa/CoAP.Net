@@ -35,6 +35,7 @@ namespace CoAPNet.Dtls.Server
 
         public bool IsClosed { get; private set; }
         public ReaderWriterLockSlim CloseLock { get; } = new ReaderWriterLockSlim();
+        public int QueueCount => _receiveQueue.Count;
 
         public void Close()
         {
