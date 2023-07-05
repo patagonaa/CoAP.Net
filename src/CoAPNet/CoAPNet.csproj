@@ -6,8 +6,8 @@
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <LangVersion>latest</LangVersion>
         <PackageId>NZSmartie.CoAPNet</PackageId>
-        <Version>0.13.1</Version>
-        <PackageVersion>0.13.1</PackageVersion>
+        <Version>0.14.0</Version>
+        <PackageVersion>0.14.0</PackageVersion>
         <Authors>Roman Vaughan</Authors>
         <Company>NZSmartie</Company>
         <Product>CoAPNet</Product>
