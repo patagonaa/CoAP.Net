@@ -166,9 +166,7 @@ namespace CoAPNet.Dtls.Server
                         {
                             _logger.LogInformation("New connection from {EndPoint}; Active Sessions: {ActiveSessions}", data.RemoteEndPoint, _sessions.GetCount());
 
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-                            Task.Factory.StartNew(() => HandleSession(session), TaskCreationOptions.LongRunning);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                            _ = Task.Factory.StartNew(() => HandleSession(session), TaskCreationOptions.LongRunning);
                         }
                         catch (Exception ex)
                         {
@@ -294,7 +292,7 @@ namespace CoAPNet.Dtls.Server
                 }
                 finally
                 {
-                    _logger.LogInformation("Connection from {EndPoint} closed after {ElapsedMilliseconds}ms", session.EndPoint, (DateTime.UtcNow - session.SessionStartTime).TotalMilliseconds);
+                    _logger.LogInformation("Connection from {EndPoint} closed after {ElapsedMilliseconds}ms", session.EndPoint, (int)(DateTime.UtcNow - session.SessionStartTime).TotalMilliseconds);
                     _sessions.Remove(session);
                 }
             }
