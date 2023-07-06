@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using Org.BouncyCastle.Tls;
@@ -36,6 +35,7 @@ namespace CoAPNet.Dtls.Server
 
         public bool IsClosed { get; private set; }
         public ReaderWriterLockSlim CloseLock { get; } = new ReaderWriterLockSlim();
+        public int QueueCount => _receiveQueue.Count;
 
         public void Close()
         {
