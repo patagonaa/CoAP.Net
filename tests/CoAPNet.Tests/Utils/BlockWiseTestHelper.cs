@@ -63,19 +63,19 @@ namespace CoAPNet.Tests.Utils
 
         public BlockWiseTestHelper AssertWriteRequestCorrespondance<TEndpoint>(Mock<TEndpoint> mockClientEndpoint, int startingBlock = 0) where TEndpoint : MockEndpoint
         {
-            
+
             // Generate an expected packet and response for all block-wise requests
             for (var block = startingBlock; block < TotalBlocks; block++)
             {
                 var bytes = ByteRange(BlockSize * block, Math.Min(TotalBytes - (block * BlockSize), BlockSize));
                 // Make local copies of values as the expression below is evaluated later.
-                int blockNumber = block, 
+                int blockNumber = block,
                     blockSize = BlockSize;
                 var hasMore = block != (TotalBlocks - 1);
 
                 mockClientEndpoint
                     .Setup(c => c.MockSendAsync(
-                        It.Is<CoapPacket>(p => IsBlockSequence(p, blockNumber, blockSize, hasMore, bytes)), 
+                        It.Is<CoapPacket>(p => IsBlockSequence(p, blockNumber, blockSize, hasMore, bytes)),
                         It.IsAny<CancellationToken>()))
                     .CallBase()
                     .Verifiable($"Did not send block: {block}");
@@ -118,7 +118,7 @@ namespace CoAPNet.Tests.Utils
                 var blockNumber = block;
                 mockClientEndpoint
                     .Setup(c => c.MockSendAsync(
-                        It.Is<CoapPacket>(p => IsBlockSequence(p, blockNumber, BlockSize, false, null)),
+                        It.Is<CoapPacket>(p => IsBlockSequence(p, blockNumber, BlockSize, false, null!)),
                         It.IsAny<CancellationToken>()))
                     .CallBase()
                     .Verifiable($"Did not request block: {block}");
@@ -131,7 +131,7 @@ namespace CoAPNet.Tests.Utils
         {
             mockClientEndpoint
                 .Setup(c => c.MockSendAsync(
-                    It.Is<CoapPacket>(p => IsBareRequest(p, null)),
+                    It.Is<CoapPacket>(p => IsBareRequest(p, null!)),
                     It.IsAny<CancellationToken>()))
                 .CallBase()
                 .Verifiable($"Did not send initial request");

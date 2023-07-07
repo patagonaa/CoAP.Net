@@ -30,6 +30,7 @@ namespace CoAPNet.Dtls.Server
 
         private int? _connectionIdLength;
 
+        #region Stats
         private int _handshakeSuccessCount = 0;
         private int _handshakeTlsErrorCount = 0;
         private int _handshakeTimeoutErrorCount = 0;
@@ -42,6 +43,7 @@ namespace CoAPNet.Dtls.Server
         private int _packetsReceivedInvalid = 0;
 
         private int _packetsSent = 0;
+        #endregion
 
         public CoapDtlsServerTransport(
             CoapDtlsServerEndPoint endPoint,

@@ -106,7 +106,7 @@ namespace CoAPDevices
 
     public class ExamplePskIdentityManager : TlsPskIdentityManager
     {
-        private string identity;
+        private string? identity;
 
         public byte[] GetHint()
         {
@@ -114,7 +114,7 @@ namespace CoAPDevices
             return new byte[0];
         }
 
-        public byte[] GetPsk(byte[] identity)
+        public byte[]? GetPsk(byte[] identity)
         {
             var identityString = Encoding.UTF8.GetString(identity);
             this.identity = identityString;
@@ -132,7 +132,7 @@ namespace CoAPDevices
 
         public string GetIdentity()
         {
-            return identity;
+            return identity ?? throw new InvalidOperationException("GetIdentity may only be called after GetPsk()");
         }
     }
 
@@ -159,7 +159,7 @@ namespace CoAPDevices
         {
             Console.WriteLine($"Got request: {request}");
 
-            if(connectionInformation is CoapDtlsConnectionInformation dtlsConnectionInformation)
+            if (connectionInformation is CoapDtlsConnectionInformation dtlsConnectionInformation)
             {
                 // this is a dtls connection
 

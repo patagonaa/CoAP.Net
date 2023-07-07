@@ -81,7 +81,7 @@ namespace CoAPDevices
     public class ExamplePskDtlsServer : PskTlsServer, IDtlsServerWithConnectionId
     {
         private readonly ExamplePskIdentityManager pskIdentityManager;
-        private byte[] connectionId;
+        private byte[]? connectionId;
 
         public ExamplePskDtlsServer(ExamplePskIdentityManager pskIdentityManager)
             : base(new BcTlsCrypto(new SecureRandom()), pskIdentityManager)
@@ -90,12 +90,13 @@ namespace CoAPDevices
             this.connectionId = null;
         }
 
-        public byte[] GetConnectionId()
+        public byte[]? GetConnectionId()
         {
             return connectionId;
         }
 
-        protected override byte[] GetNewConnectionID()
+        // This may or may not be called depending on the client's supported extensions
+        protected override byte[]? GetNewConnectionID()
         {
             if (connectionId != null)
                 throw new InvalidOperationException("cannot reuse DtlsServer");
@@ -121,7 +122,7 @@ namespace CoAPDevices
 
     public class ExamplePskIdentityManager : TlsPskIdentityManager
     {
-        private string identity;
+        private string? identity;
 
         public byte[] GetHint()
         {
@@ -129,7 +130,7 @@ namespace CoAPDevices
             return new byte[0];
         }
 
-        public byte[] GetPsk(byte[] identity)
+        public byte[]? GetPsk(byte[] identity)
         {
             var identityString = Encoding.UTF8.GetString(identity);
             this.identity = identityString;
@@ -147,7 +148,7 @@ namespace CoAPDevices
 
         public string GetIdentity()
         {
-            return identity;
+            return identity ?? throw new InvalidOperationException("GetIdentity may only be called after GetPsk()");
         }
     }
 
@@ -174,7 +175,7 @@ namespace CoAPDevices
         {
             Console.WriteLine($"Got request: {request}");
 
-            if(connectionInformation is CoapDtlsConnectionInformation dtlsConnectionInformation)
+            if (connectionInformation is CoapDtlsConnectionInformation dtlsConnectionInformation)
             {
                 // this is a dtls connection
 

@@ -1,12 +1,12 @@
 ﻿#region License
 // Copyright 2017 Roman Vaughan (NZSmartie)
-//  
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,7 +28,7 @@ namespace CoAPNet.Tests
     [TestFixture]
     public class CoapMessageTest
     {
-        private CoapMessage _message = null;
+        private CoapMessage _message = null!;
 
         [SetUp]
         public void InitTest()
@@ -39,7 +39,7 @@ namespace CoAPNet.Tests
         [TearDown]
         public void CleanupTest()
         {
-            _message = null;
+            _message = null!;
         }
 
         [Test]
@@ -306,7 +306,7 @@ namespace CoAPNet.Tests
                 _message.Decode(new MemoryStream(new byte[] { 0x52, 0x00, 0xAA, 0x55, 0x12, 0x34 }));
             }, "Empty message with tag");
 
-            // Verify that Message.Id was decoded 
+            // Verify that Message.Id was decoded
             Assert.AreEqual(0xAA55, _message.Id);
 
             Assert.Throws<CoapMessageFormatException>(() =>
@@ -314,7 +314,7 @@ namespace CoAPNet.Tests
                 _message.Decode(new MemoryStream(new byte[] { 0x60, 0x00, 0xC3, 0x3C, 0xc1, 0x28 }));
             }, "Empty message with options");
 
-            // Verify that Message.Id was decoded 
+            // Verify that Message.Id was decoded
             Assert.AreEqual(0xC33C, _message.Id);
 
             Assert.Throws<CoapMessageFormatException>(() =>
