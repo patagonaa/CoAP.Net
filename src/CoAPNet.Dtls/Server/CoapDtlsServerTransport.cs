@@ -164,12 +164,12 @@ namespace CoAPNet.Dtls.Server
                             packet => _sendQueue.Add(packet),
                             DateTime.UtcNow);
 
-                        session.OnEndpointReplaced += (session, oldEp, newEp) => _sessions.ReplaceSessionEndpoint(session, oldEp, newEp);
-                        session.EnqueueDatagram(data.Buffer, data.RemoteEndPoint);
-
-                        _sessions.Add(session);
                         try
                         {
+                            session.OnEndpointReplaced += (session, oldEp, newEp) => _sessions.ReplaceSessionEndpoint(session, oldEp, newEp);
+                            session.EnqueueDatagram(data.Buffer, data.RemoteEndPoint);
+
+                            _sessions.Add(session);
                             _logger.LogInformation("New connection from {EndPoint}; Active Sessions: {ActiveSessions}", data.RemoteEndPoint, _sessions.GetCount());
 
                             _ = Task.Factory.StartNew(() => HandleSession(session), TaskCreationOptions.LongRunning);
@@ -178,6 +178,7 @@ namespace CoAPNet.Dtls.Server
                         {
                             _logger.LogError(ex, "Exception while starting session handler!");
                             _sessions.Remove(session);
+                            session.Dispose();
                         }
                     }
                     else if (packetSessionType == DtlsSessionFindResult.FoundByEndPoint || packetSessionType == DtlsSessionFindResult.FoundByConnectionId)
@@ -343,6 +344,7 @@ namespace CoAPNet.Dtls.Server
                 {
                     _logger.LogInformation("Connection from {EndPoint} closed after {ElapsedMilliseconds}ms", session.EndPoint, (int)(DateTime.UtcNow - session.SessionStartTime).TotalMilliseconds);
                     _sessions.Remove(session);
+                    session.Dispose();
                 }
             }
         }
@@ -366,7 +368,7 @@ namespace CoAPNet.Dtls.Server
                         var sessionTimeout = session.ConnectionId != null ? _config.SessionTimeoutWithCid : _config.SessionTimeout;
                         if (session.LastReceivedTime < DateTime.UtcNow - sessionTimeout)
                         {
-                            session.Dispose();
+                            session.Close();
                             cleaned++;
                         }
                     }

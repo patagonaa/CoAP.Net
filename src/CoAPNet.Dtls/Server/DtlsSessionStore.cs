@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 
 namespace CoAPNet.Dtls.Server
@@ -21,11 +22,6 @@ namespace CoAPNet.Dtls.Server
             _acceptingSessionsByEp = new ConcurrentDictionary<IPEndPoint, TSession>();
             _sessionsByEp = new ConcurrentDictionary<IPEndPoint, TSession>();
             _sessionsByCid = new ConcurrentDictionary<byte[], TSession>(new ConnectionIdComparer());
-        }
-
-        public IEnumerable<TSession> GetSessions()
-        {
-            return _sessionsByEp.Values;
         }
 
         public DtlsSessionFindResult TryFindSession(IPEndPoint endPoint, byte[]? cid, out TSession? session)
@@ -75,49 +71,73 @@ namespace CoAPNet.Dtls.Server
 
         public void Add(TSession session)
         {
-            _sessionsByEp.TryAdd(session.EndPoint, session);
-            _acceptingSessionsByEp.TryAdd(session.EndPoint, session);
+            if (_sessionsByEp.ContainsKey(session.EndPoint) || !_acceptingSessionsByEp.TryAdd(session.EndPoint, session))
+                throw new InvalidOperationException($"Session can't be added because the endpoint {session.EndPoint} is already in use");
         }
 
         public void NotifySessionAccepted(TSession session)
         {
             if (session.ConnectionId != null)
             {
-                _sessionsByCid.TryAdd(session.ConnectionId, session);
+                if (!_sessionsByCid.TryAdd(session.ConnectionId, session))
+                {
+                    throw new InvalidOperationException($"Session {session.EndPoint} could not be accepted due to duplicate connection id!");
+                }
             }
-            _acceptingSessionsByEp.TryRemove(session.EndPoint, out _);
+            else
+            {
+                if (!_sessionsByEp.TryAdd(session.EndPoint, session))
+                {
+                    throw new InvalidOperationException($"Session {session.EndPoint} could not be accepted due to duplicate endpoint!");
+                }
+            }
+            if (!_acceptingSessionsByEp.TryRemove(session.EndPoint, out _))
+            {
+                _logger.LogError("Session {Endpoint} could not be found in accepting sessions! Adding anyways!", session.EndPoint);
+            }
         }
 
         public void Remove(TSession session)
         {
-            _acceptingSessionsByEp.TryRemove(session.EndPoint, out _);
-            _sessionsByEp.TryRemove(session.EndPoint, out _);
+            if (_acceptingSessionsByEp.TryRemove(session.EndPoint, out var acceptingSession))
+            {
+                if (acceptingSession == session)
+                {
+                    // if the removed acceptingSession was the right session, we just return to avoid removing an established session with the same endpoint/cid
+                    return;
+                }
+                else
+                {
+                    // if we removed acceptingSession was the wrong session, we tried to remove an established session that happens to have the same endpoint
+                    // as an accepting session.
+                    // in this case we re-add the session we removed and try to remove the session by endpoint/cid
+                    _logger.LogWarning("Accepting session we removed wasn't the one we wanted to remove.");
+                    _acceptingSessionsByEp.TryAdd(session.EndPoint, acceptingSession);
+                }
+            }
+
             if (session.ConnectionId != null)
             {
                 _sessionsByCid.TryRemove(session.ConnectionId, out _);
+            }
+            else
+            {
+                _sessionsByEp.TryRemove(session.EndPoint, out _);
             }
         }
 
         public void ReplaceSessionEndpoint(IDtlsSession sessionToReplace, IPEndPoint oldEndPoint, IPEndPoint newEndPoint)
         {
-            _acceptingSessionsByEp.TryRemove(oldEndPoint, out _);
-            if (_sessionsByEp.TryRemove(oldEndPoint, out var session))
-            {
-                if (_sessionsByEp.TryAdd(newEndPoint, session))
-                {
-                    _logger.LogInformation("Replacing endpoint {OldEndPoint} with {NewEndPoint}", oldEndPoint, newEndPoint);
-                }
-                else
-                {
-                    _logger.LogWarning("Couldn't add session because endpoint {NewEndPoint} is already in use!", newEndPoint);
-                    session.Dispose();
-                }
-            }
+        }
+
+        public IEnumerable<TSession> GetSessions()
+        {
+            return _acceptingSessionsByEp.Values.Concat(_sessionsByEp.Values).Concat(_sessionsByCid.Values);
         }
 
         public int GetCount()
         {
-            return _sessionsByEp.Count;
+            return _acceptingSessionsByEp.Count + _sessionsByEp.Count + _sessionsByCid.Count;
         }
 
         private class ConnectionIdComparer : IEqualityComparer<byte[]>
