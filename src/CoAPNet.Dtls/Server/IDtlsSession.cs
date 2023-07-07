@@ -1,9 +1,8 @@
-﻿using System;
-using System.Net;
+﻿using System.Net;
 
 namespace CoAPNet.Dtls.Server
 {
-    internal interface IDtlsSession : IDisposable
+    internal interface IDtlsSession
     {
         IPEndPoint EndPoint { get; }
         /// <summary>
