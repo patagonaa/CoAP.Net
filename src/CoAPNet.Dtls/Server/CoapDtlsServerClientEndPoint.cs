@@ -8,10 +8,9 @@ using Org.BouncyCastle.Tls;
 
 namespace CoAPNet.Dtls.Server
 {
-    internal class CoapDtlsServerClientEndPoint : ICoapEndpoint
+    internal class CoapDtlsServerClientEndPoint : ICoapEndpoint, IDtlsSession
     {
         private readonly QueueDatagramTransport _udpTransport;
-        private readonly Action<IPEndPoint, IPEndPoint> _replaceEndpointAction;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         /// <summary>
         /// This semaphore is released whenever a packet has arrived or has been processed.
@@ -21,15 +20,15 @@ namespace CoAPNet.Dtls.Server
         private SemaphoreSlim? _packetsReceivedSemaphore;
         private DtlsTransport? _dtlsTransport;
 
+        public event Action<CoapDtlsServerClientEndPoint, IPEndPoint, IPEndPoint>? OnEndpointReplaced;
+
         public CoapDtlsServerClientEndPoint(
             IPEndPoint endPoint,
             int networkMtu,
             Action<UdpSendPacket> sendAction,
-            Action<IPEndPoint, IPEndPoint> replaceEndpointAction,
             DateTime sessionStartTime)
         {
             EndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
-            _replaceEndpointAction = replaceEndpointAction;
             BaseUri = new UriBuilder()
             {
                 Scheme = "coaps://",
@@ -55,7 +54,7 @@ namespace CoAPNet.Dtls.Server
             {
                 var oldEndPoint = EndPoint;
                 EndPoint = PendingEndPoint;
-                _replaceEndpointAction(oldEndPoint, PendingEndPoint);
+                OnEndpointReplaced?.Invoke(this, oldEndPoint, PendingEndPoint);
                 PendingEndPoint = null;
             }
         }

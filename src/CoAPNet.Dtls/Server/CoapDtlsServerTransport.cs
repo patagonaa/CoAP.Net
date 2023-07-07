@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,11 +22,13 @@ namespace CoAPNet.Dtls.Server
         private readonly DtlsServerConfig _config;
         private readonly ILogger<CoapDtlsServerTransport> _logger;
         private readonly DtlsServerProtocol _serverProtocol;
-        private readonly DtlsSessionStore _sessions;
+        private readonly DtlsSessionStore<CoapDtlsServerClientEndPoint> _sessions;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly BlockingCollection<UdpSendPacket> _sendQueue = new BlockingCollection<UdpSendPacket>();
 
         private UdpClient? _socket;
+
+        private int? _connectionIdLength;
 
         private int _handshakeSuccessCount = 0;
         private int _handshakeTlsErrorCount = 0;
@@ -55,7 +58,7 @@ namespace CoAPNet.Dtls.Server
 
             _serverProtocol = new DtlsServerProtocol();
 
-            _sessions = new DtlsSessionStore(loggerFactory.CreateLogger<DtlsSessionStore>());
+            _sessions = new DtlsSessionStore<CoapDtlsServerClientEndPoint>(loggerFactory.CreateLogger<DtlsSessionStore<CoapDtlsServerClientEndPoint>>());
         }
 
         internal DtlsStatistics GetStatistics()
@@ -128,7 +131,7 @@ namespace CoAPNet.Dtls.Server
                         throw;
                     }
 
-                    var packetSessionType = _sessions.TryFindSession(data, out var session);
+                    var packetSessionType = _sessions.TryFindSession(data.RemoteEndPoint, GetConnectionId(data.Buffer), out var session);
 
                     switch (packetSessionType)
                     {
@@ -157,8 +160,9 @@ namespace CoAPNet.Dtls.Server
                             data.RemoteEndPoint,
                             NetworkMtu,
                             packet => _sendQueue.Add(packet),
-                            (oldEp, newEp) => _sessions.ReplaceSessionEndpoint(oldEp, newEp),
                             DateTime.UtcNow);
+
+                        session.OnEndpointReplaced += (session, oldEp, newEp) => _sessions.ReplaceSessionEndpoint(session, oldEp, newEp);
                         session.EnqueueDatagram(data.Buffer, data.RemoteEndPoint);
 
                         _sessions.Add(session);
@@ -191,6 +195,45 @@ namespace CoAPNet.Dtls.Server
                 {
                     _logger.LogError(ex, "Error while handling incoming datagrams");
                 }
+            }
+        }
+
+        private byte[]? GetConnectionId(byte[] packet)
+        {
+            try
+            {
+                if (!_connectionIdLength.HasValue)
+                    return null;
+
+                const int headerCidOffset = 11;
+                var cidLength = _connectionIdLength.Value;
+
+                if (packet.Length >= (headerCidOffset + cidLength) && packet[0] == ContentType.tls12_cid)
+                {
+                    var cid = new byte[cidLength];
+                    Array.Copy(packet, headerCidOffset, cid, 0, cidLength);
+                    return cid;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while getting cid from {Packet}", packet);
+                return null;
+            }
+        }
+
+        private void SetConnectionIdLength(int sessionCidLength)
+        {
+            if (_connectionIdLength.HasValue)
+            {
+                if (sessionCidLength != _connectionIdLength.Value)
+                    throw new InvalidOperationException("Connection IDs must have constant length!");
+            }
+            else
+            {
+                _connectionIdLength = sessionCidLength;
             }
         }
 
@@ -252,6 +295,10 @@ namespace CoAPNet.Dtls.Server
                     {
                         Interlocked.Increment(ref _handshakeErrorCount);
                         throw;
+                    }
+                    if (session.ConnectionId != null)
+                    {
+                        SetConnectionIdLength(session.ConnectionId.Length);
                     }
                     _sessions.NotifySessionAccepted(session);
 
