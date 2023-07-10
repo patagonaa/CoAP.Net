@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -311,9 +310,11 @@ namespace CoAPNet.Dtls.Server
 
                         var connectionInfo = new CoapDtlsConnectionInformation(_endPoint, session, server);
 
-                        while (!session.IsClosed && !_cts.IsCancellationRequested)
+                        var cancellationToken = _cts.Token;
+                        while (true)
                         {
-                            var packet = await session.ReceiveAsync(_cts.Token);
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var packet = await session.ReceiveAsync(cancellationToken);
 
                             using (_logger.BeginScope(new Dictionary<string, object> { { "RemoteEndPoint", session.EndPoint } }))
                             {
@@ -352,8 +353,7 @@ namespace CoAPNet.Dtls.Server
         private bool IsCanceledException(Exception ex)
         {
             return ex is OperationCanceledException ||
-                ex is DtlsConnectionClosedException ||
-                (ex is TlsFatalAlert tlsAlert && (tlsAlert.InnerException is DtlsConnectionClosedException || tlsAlert.AlertDescription == AlertDescription.user_canceled));
+                (ex is TlsFatalAlert tlsAlert && (tlsAlert.InnerException is OperationCanceledException || tlsAlert.AlertDescription == AlertDescription.user_canceled));
         }
 
         private async Task HandleCleanup()
@@ -365,10 +365,13 @@ namespace CoAPNet.Dtls.Server
                     int cleaned = 0;
                     foreach (var session in _sessions.GetSessions())
                     {
-                        var sessionTimeout = session.ConnectionId != null ? _config.SessionTimeoutWithCid : _config.SessionTimeout;
+                        var hasConnectionId = session.ConnectionId != null;
+                        var sessionTimeout = hasConnectionId ? _config.SessionTimeoutWithCid : _config.SessionTimeout;
                         if (session.LastReceivedTime < DateTime.UtcNow - sessionTimeout)
                         {
-                            session.Close();
+                            // do not notify the peer here if we have a connection ID.
+                            // we don't want to send an alert-message to an endpoint that has possibly be reused.
+                            session.Close(!hasConnectionId);
                             cleaned++;
                         }
                     }
@@ -399,7 +402,7 @@ namespace CoAPNet.Dtls.Server
             {
                 try
                 {
-                    session.Dispose();
+                    session.Close(true);
                 }
                 catch
                 {
