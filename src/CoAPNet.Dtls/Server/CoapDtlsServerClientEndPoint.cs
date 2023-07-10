@@ -100,24 +100,35 @@ namespace CoAPNet.Dtls.Server
 
                 cancelSource.Token.ThrowIfCancellationRequested();
 
-                // if all queued packets have been processed (semaphore count is 0), wait asynchronously until another packet arrives
-                await _packetsReceivedSemaphore.WaitAsync(cancelSource.Token);
-
-                var receiveTimeout = 1; // we don't want to block here, 0 means never timeout, so we just wait 1ms
-                int received = _dtlsTransport.Receive(buffer, 0, bufLen, receiveTimeout, RecordCallback);
-                if (received > 0)
+                // First handle packets left in BouncyCastle's internal receive-queue
+                int receivedPending = _dtlsTransport.ReceivePending(buffer, 0, bufLen, RecordCallback);
+                if (receivedPending > 0)
                 {
-                    // One packet may contain multiple records.
-                    // For that case, we want to run Receive() another time to make sure BouncyCastle's internal receive-queue is empty.
-                    SignalPossibleReceivedPacket();
-
-                    var payload = new byte[received];
-                    Array.Copy(buffer, payload, received);
+                    var payload = new byte[receivedPending];
+                    Array.Copy(buffer, payload, receivedPending);
                     return new CoapPacket
                     {
                         Payload = payload,
                         Endpoint = this
                     };
+                }
+                else
+                {
+                    // if all packets queued in QueueDatagramTransport have been processed (semaphore count is 0), wait asynchronously until another packet arrives
+                    await _packetsReceivedSemaphore.WaitAsync(cancelSource.Token);
+
+                    var receiveTimeout = 1; // we don't want to block here, 0 means never timeout, so we just wait 1ms
+                    int received = _dtlsTransport.Receive(buffer, 0, bufLen, receiveTimeout, RecordCallback);
+                    if (received > 0)
+                    {
+                        var payload = new byte[received];
+                        Array.Copy(buffer, payload, received);
+                        return new CoapPacket
+                        {
+                            Payload = payload,
+                            Endpoint = this
+                        };
+                    }
                 }
             }
         }
@@ -146,10 +157,16 @@ namespace CoAPNet.Dtls.Server
         {
             _dtlsTransport = serverProtocol.Accept(server, _udpTransport);
 
-            // Allow Receive() to run at least once in case there is still a record in BouncyCastle's record queue
-            // This might be necessary if there was an "application_data" record transmitted together with the handshake "finished" record
-            var initialReceiveRecordsCount = Math.Min(_udpTransport.QueueCount, 1);
-            _packetsReceivedSemaphore = new SemaphoreSlim(initialReceiveRecordsCount);
+            // run Receive() as many times as we have packets in queue
+            // first assign Semaphore and then read QueueCount to
+            // avoid possible race condition where a packet arrives after QueueCount was read but before Semaphore is assigned.
+            _packetsReceivedSemaphore = new SemaphoreSlim(0);
+
+            var packetsInQueue = _udpTransport.QueueCount;
+            for (int i = 0; i < packetsInQueue; i++)
+            {
+                _packetsReceivedSemaphore.Release();
+            }
 
             if (server is IDtlsServerWithConnectionId serverWithCid)
             {
