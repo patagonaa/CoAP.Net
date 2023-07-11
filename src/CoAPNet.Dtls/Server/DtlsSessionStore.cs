@@ -50,13 +50,7 @@ namespace CoAPNet.Dtls.Server
             {
                 if (sessionByEp.ConnectionId != null)
                 {
-                    // https://www.rfc-editor.org/rfc/rfc9146.html#section-3-11
-                    // Packet without cid for session with cid.
-                    // This could either be an issue with the client or this endpoint has been reused for another client (NAT issue).
-                    // We drop the packet in this case so the client can try again with another endpoint.
-                    // Another solution might be to remove sessions from _sessionsByEp after a connection id is negotiated (but this would require some other changes as well).
-
-                    _logger.LogWarning("Got packet without cid for session with cid from {EndPoint}. Discarding.", endPoint);
+                    _logger.LogError("Session has acquired a connection id after it was accepted. Discarding packet.");
                     session = null;
                     return DtlsSessionFindResult.Invalid;
                 }
@@ -124,10 +118,6 @@ namespace CoAPNet.Dtls.Server
             {
                 _sessionsByEp.TryRemove(session.EndPoint, out _);
             }
-        }
-
-        public void ReplaceSessionEndpoint(IDtlsSession sessionToReplace, IPEndPoint oldEndPoint, IPEndPoint newEndPoint)
-        {
         }
 
         public IEnumerable<TSession> GetSessions()

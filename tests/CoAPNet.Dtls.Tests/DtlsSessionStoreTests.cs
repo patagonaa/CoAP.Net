@@ -223,7 +223,6 @@ namespace CoAPNet.Dtls.Tests
             Assert.AreEqual(1, sessionStore.GetCount());
 
             session.EndPoint = Ep2; // endpoint may have changed in the meantime
-            sessionStore.ReplaceSessionEndpoint(session, Ep1, Ep2);
 
             sessionStore.Remove(session);
             Assert.AreEqual(0, sessionStore.GetSessions().Count());
@@ -404,9 +403,6 @@ namespace CoAPNet.Dtls.Tests
 
             // packet from new endpoint
             Assert.AreEqual(DtlsSessionFindResult.FoundByConnectionId, sessionStore.TryFindSession(Ep2, Cid1, out _), "established session (new ep) => found by cid");
-
-            // replace endpoint
-            sessionStore.ReplaceSessionEndpoint(session, Ep1, Ep2);
 
             // session has been removed (is finished)
             sessionStore.Remove(session);

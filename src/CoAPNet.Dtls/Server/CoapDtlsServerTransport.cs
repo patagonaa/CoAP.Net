@@ -165,7 +165,6 @@ namespace CoAPNet.Dtls.Server
 
                         try
                         {
-                            session.OnEndpointReplaced += (session, oldEp, newEp) => _sessions.ReplaceSessionEndpoint(session, oldEp, newEp);
                             session.EnqueueDatagram(data.Buffer, data.RemoteEndPoint);
 
                             _sessions.Add(session);

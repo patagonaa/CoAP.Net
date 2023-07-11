@@ -20,8 +20,6 @@ namespace CoAPNet.Dtls.Server
         private SemaphoreSlim? _packetsReceivedSemaphore;
         private DtlsTransport? _dtlsTransport;
 
-        public event Action<CoapDtlsServerClientEndPoint, IPEndPoint, IPEndPoint>? OnEndpointReplaced;
-
         public CoapDtlsServerClientEndPoint(
             IPEndPoint endPoint,
             int networkMtu,
@@ -56,9 +54,7 @@ namespace CoAPNet.Dtls.Server
         {
             if (PendingEndPoint != null && recordFlags.HasFlag(DtlsRecordFlags.IsNewest) && recordFlags.HasFlag(DtlsRecordFlags.UsesConnectionID))
             {
-                var oldEndPoint = EndPoint;
                 EndPoint = PendingEndPoint;
-                OnEndpointReplaced?.Invoke(this, oldEndPoint, PendingEndPoint);
                 PendingEndPoint = null;
             }
         }
