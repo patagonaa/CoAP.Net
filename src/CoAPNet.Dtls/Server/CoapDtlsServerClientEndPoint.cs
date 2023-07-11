@@ -162,7 +162,9 @@ namespace CoAPNet.Dtls.Server
             // first assign Semaphore and then read QueueCount to
             // avoid possible race condition where a packet arrives after QueueCount was read but before Semaphore is assigned.
             _packetsReceivedSemaphore = new SemaphoreSlim(0);
-            _packetsReceivedSemaphore.Release(_udpTransport.QueueCount);
+            var queueCount = _udpTransport.QueueCount;
+            if (queueCount > 0)
+                _packetsReceivedSemaphore.Release(queueCount);
 
             if (server is IDtlsServerWithConnectionId serverWithCid)
             {
