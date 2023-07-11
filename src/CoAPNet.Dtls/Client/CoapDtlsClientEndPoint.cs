@@ -45,24 +45,27 @@ namespace CoAPNet.Dtls.Client
 
             var bufLen = _datagramTransport.GetReceiveLimit();
             var buffer = new byte[bufLen];
-            while (!token.IsCancellationRequested)
+
+            // we use a long running task here so we don't block the calling thread till we're done waiting, but start a new one and yield instead
+            return await Task.Factory.StartNew(() =>
             {
-                // we can't cancel waiting for a packet (BouncyCastle doesn't support this), so there will be a bit of delay between cancelling and actually stopping trying to receive.
-                // there is a wait timeout of 5000ms to close the CoapEndPoint, this has to be less than that.
-                // also, we use a long running task here so we don't block the calling thread till we're done waiting, but start a new one and yield instead
-                int received = await Task.Factory.StartNew(() => _datagramTransport.Receive(buffer, 0, bufLen, 4000), TaskCreationOptions.LongRunning);
-
-                if (received > 0)
+                while (true)
                 {
-                    return await Task.FromResult(new CoapPacket
-                    {
-                        Payload = new ArraySegment<byte>(buffer, 0, received).ToArray(),
-                        Endpoint = this
-                    });
-                }
-            }
+                    token.ThrowIfCancellationRequested();
+                    // we can't cancel waiting for a packet (BouncyCastle doesn't support this), so there will be a bit of delay between cancelling and actually stopping trying to receive.
+                    // there is a wait timeout of 5000ms to close the CoapEndPoint, this has to be less than that.
+                    int received = _datagramTransport.Receive(buffer, 0, bufLen, 1000);
 
-            throw new OperationCanceledException();
+                    if (received > 0)
+                    {
+                        return new CoapPacket
+                        {
+                            Payload = new ArraySegment<byte>(buffer, 0, received).ToArray(),
+                            Endpoint = this
+                        };
+                    }
+                }
+            }, TaskCreationOptions.LongRunning);
         }
 
         public Task SendAsync(CoapPacket packet, CancellationToken token)
