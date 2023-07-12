@@ -1,4 +1,13 @@
 # Change Log for CoAP.Net
+### v0.15.0
+- [#8](https://github.com/patagonaa/CoAP.Net/pull/8)
+  [#9](https://github.com/patagonaa/CoAP.Net/pull/9)
+  [`a7c009ee`](https://github.com/patagonaa/CoAP.Net/commit/a7c009ee)
+  [`b3193b61`](https://github.com/patagonaa/CoAP.Net/commit/b3193b61)
+  Improve DTLS receive method so idle sessions don't need a running thread
+- [`d2f24b1d`](https://github.com/patagonaa/CoAP.Net/commit/d2f24b1d) enable nullability for tests and examples, improve documentation
+- [`4e8c88e2`](https://github.com/patagonaa/CoAP.Net/commit/4e8c88e2) DTLS client: avoid cpu-intensive task creation, improve cancel-behaviour
+- [#10](https://github.com/patagonaa/CoAP.Net/pull/10) Implement DTLS connection id closer to spec so reused endpoints don't cause issues
 
 ### v0.14.0
 - [#6](https://github.com/patagonaa/CoAP.Net/pull/6) Fix exception when using CID while there are sessions without CID
