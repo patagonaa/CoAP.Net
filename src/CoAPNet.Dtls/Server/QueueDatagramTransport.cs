@@ -78,6 +78,8 @@ namespace CoAPNet.Dtls.Server
             _sendCallback(buffer.ToArray());
         }
 
+        /// <inheritdoc/>
+        /// <exception cref="ObjectDisposedException"></exception>
         public void Close()
         {
             _cts.Cancel();

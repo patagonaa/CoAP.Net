@@ -370,7 +370,19 @@ namespace CoAPNet.Dtls.Server
                         {
                             // do not notify the peer here if we have a connection ID.
                             // we don't want to send an alert-message to an endpoint that has possibly be reused.
-                            session.Close(!hasConnectionId);
+                            try
+                            {
+                                session.Close(!hasConnectionId);
+                            }
+                            catch (ObjectDisposedException)
+                            {
+                                // race condition: session has already been closed and disposed
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Error while cleaning up session");
+                            }
+
                             cleaned++;
                         }
                     }

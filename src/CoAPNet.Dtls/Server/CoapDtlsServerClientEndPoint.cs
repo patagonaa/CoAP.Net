@@ -77,6 +77,7 @@ namespace CoAPNet.Dtls.Server
         /// Close the session, optionally notifying the peer about the session close.
         /// </summary>
         /// <param name="notifyPeer">Should the peer be notified of the closing session?</param>
+        /// <exception cref="ObjectDisposedException">The transport has already been disposed</exception>
         public void Close(bool notifyPeer)
         {
             // if we don't want to notify the peer, we close the DatagramTransport before BouncyCastle can send anything
@@ -91,7 +92,13 @@ namespace CoAPNet.Dtls.Server
 
         public void Dispose()
         {
-            Close(false);
+            try
+            {
+                Close(false);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
             _udpTransport.Dispose();
             _packetsReceivedSemaphore?.Dispose();
         }
