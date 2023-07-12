@@ -1,55 +1,37 @@
 ﻿using Microsoft.Extensions.Logging;
-using Org.BouncyCastle.Tls;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
-using System.Net.Sockets;
 
 namespace CoAPNet.Dtls.Server
 {
-    internal class DtlsSessionStore
+    internal class DtlsSessionStore<TSession>
+        where TSession : class, IDtlsSession
     {
-        private readonly ILogger<DtlsSessionStore> _logger;
-        private readonly ConcurrentDictionary<IPEndPoint, CoapDtlsServerClientEndPoint> _acceptingSessionsByEp;
-        private readonly ConcurrentDictionary<IPEndPoint, CoapDtlsServerClientEndPoint> _sessionsByEp;
-        private readonly ConcurrentDictionary<byte[], CoapDtlsServerClientEndPoint> _sessionsByCid;
+        private readonly ILogger<DtlsSessionStore<TSession>> _logger;
+        private readonly ConcurrentDictionary<IPEndPoint, TSession> _acceptingSessionsByEp;
+        private readonly ConcurrentDictionary<IPEndPoint, TSession> _sessionsByEp;
+        private readonly ConcurrentDictionary<byte[], TSession> _sessionsByCid;
 
-        private int? _connectionIdLength;
-
-        public DtlsSessionStore(ILogger<DtlsSessionStore> logger)
+        public DtlsSessionStore(ILogger<DtlsSessionStore<TSession>> logger)
         {
             _logger = logger;
-            _acceptingSessionsByEp = new ConcurrentDictionary<IPEndPoint, CoapDtlsServerClientEndPoint>();
-            _sessionsByEp = new ConcurrentDictionary<IPEndPoint, CoapDtlsServerClientEndPoint>();
-            _sessionsByCid = new ConcurrentDictionary<byte[], CoapDtlsServerClientEndPoint>(new ConnectionIdComparer());
+            _acceptingSessionsByEp = new ConcurrentDictionary<IPEndPoint, TSession>();
+            _sessionsByEp = new ConcurrentDictionary<IPEndPoint, TSession>();
+            _sessionsByCid = new ConcurrentDictionary<byte[], TSession>(new ConnectionIdComparer());
         }
 
-        public IEnumerable<CoapDtlsServerClientEndPoint> GetSessions()
-        {
-            return _sessionsByEp.Values;
-        }
-
-        public DtlsSessionFindResult TryFindSession(UdpReceiveResult data, out CoapDtlsServerClientEndPoint? session)
+        public DtlsSessionFindResult TryFindSession(IPEndPoint endPoint, byte[]? cid, out TSession? session)
         {
             // this is required because there may be packets with a cid before we have been notified of the cid by the session.
             // once the session is accepted, we just search by cid / endpoint (depending on whether the packet or session use cid or not)
-            if (_acceptingSessionsByEp.TryGetValue(data.RemoteEndPoint, out var cidSessionByEp))
+            if (_acceptingSessionsByEp.TryGetValue(endPoint, out var cidSessionByEp))
             {
                 session = cidSessionByEp;
                 return DtlsSessionFindResult.FoundByEndPoint;
-            }
-
-            byte[]? cid;
-            try
-            {
-                cid = GetConnectionId(data.Buffer);
-            }
-            catch (Exception ex)
-            {
-                cid = null;
-                _logger.LogError(ex, "Error while getting cid from {EndPoint}", data.RemoteEndPoint);
             }
 
             if (cid != null)
@@ -64,17 +46,11 @@ namespace CoAPNet.Dtls.Server
                 return DtlsSessionFindResult.UnknownCid;
             }
 
-            if (_sessionsByEp.TryGetValue(data.RemoteEndPoint, out var sessionByEp))
+            if (_sessionsByEp.TryGetValue(endPoint, out var sessionByEp))
             {
                 if (sessionByEp.ConnectionId != null)
                 {
-                    // https://www.rfc-editor.org/rfc/rfc9146.html#section-3-11
-                    // Packet without cid for session with cid.
-                    // This could either be an issue with the client or this endpoint has been reused for another client (NAT issue).
-                    // We drop the packet in this case so the client can try again with another endpoint.
-                    // Another solution might be to remove sessions from _sessionsByEp after a connection id is negotiated (but this would require some other changes as well).
-
-                    _logger.LogWarning("Got packet without cid for session with cid from {EndPoint}. Discarding.", data.RemoteEndPoint);
+                    _logger.LogError("Session has acquired a connection id after it was accepted. Discarding packet.");
                     session = null;
                     return DtlsSessionFindResult.Invalid;
                 }
@@ -87,83 +63,71 @@ namespace CoAPNet.Dtls.Server
             return DtlsSessionFindResult.NewSession;
         }
 
-        private byte[]? GetConnectionId(byte[] packet)
+        public void Add(TSession session)
         {
-            if (!_connectionIdLength.HasValue)
-                return null;
-
-            const int headerCidOffset = 11;
-            var cidLength = _connectionIdLength.Value;
-
-            if (packet.Length >= (headerCidOffset + cidLength) && packet[0] == ContentType.tls12_cid)
-            {
-                var cid = new byte[cidLength];
-                Array.Copy(packet, headerCidOffset, cid, 0, cidLength);
-                return cid;
-            }
-
-            return null;
+            if (_sessionsByEp.ContainsKey(session.EndPoint) || !_acceptingSessionsByEp.TryAdd(session.EndPoint, session))
+                throw new InvalidOperationException($"Session can't be added because the endpoint {session.EndPoint} is already in use");
         }
 
-        public void Add(CoapDtlsServerClientEndPoint session)
-        {
-            _sessionsByEp.TryAdd(session.EndPoint, session);
-            _acceptingSessionsByEp.TryAdd(session.EndPoint, session);
-        }
-
-        public void NotifySessionAccepted(CoapDtlsServerClientEndPoint session)
+        public void NotifySessionAccepted(TSession session)
         {
             if (session.ConnectionId != null)
             {
-                SetConnectionIdLength(session.ConnectionId.Length);
-                _sessionsByCid.TryAdd(session.ConnectionId, session);
-            }
-            _acceptingSessionsByEp.TryRemove(session.EndPoint, out _);
-        }
-
-        private void SetConnectionIdLength(int sessionCidLength)
-        {
-            if (_connectionIdLength.HasValue)
-            {
-                if (sessionCidLength != _connectionIdLength.Value)
-                    throw new InvalidOperationException("Connection IDs must have constant length!");
+                if (!_sessionsByCid.TryAdd(session.ConnectionId, session))
+                {
+                    throw new InvalidOperationException($"Session {session.EndPoint} could not be accepted due to duplicate connection id!");
+                }
             }
             else
             {
-                _connectionIdLength = sessionCidLength;
+                if (!_sessionsByEp.TryAdd(session.EndPoint, session))
+                {
+                    throw new InvalidOperationException($"Session {session.EndPoint} could not be accepted due to duplicate endpoint!");
+                }
+            }
+            if (!_acceptingSessionsByEp.TryRemove(session.EndPoint, out _))
+            {
+                _logger.LogError("Session {Endpoint} could not be found in accepting sessions! Adding anyways!", session.EndPoint);
             }
         }
 
-        public void Remove(CoapDtlsServerClientEndPoint session)
+        public void Remove(TSession session)
         {
-            _acceptingSessionsByEp.TryRemove(session.EndPoint, out _);
-            _sessionsByEp.TryRemove(session.EndPoint, out _);
+            if (_acceptingSessionsByEp.TryRemove(session.EndPoint, out var acceptingSession))
+            {
+                if (acceptingSession == session)
+                {
+                    // if the removed acceptingSession was the right session, we just return to avoid removing an established session with the same endpoint/cid
+                    return;
+                }
+                else
+                {
+                    // if we removed acceptingSession was the wrong session, we tried to remove an established session that happens to have the same endpoint
+                    // as an accepting session.
+                    // in this case we re-add the session we removed and try to remove the session by endpoint/cid
+                    _logger.LogWarning("Accepting session we removed wasn't the one we wanted to remove.");
+                    _acceptingSessionsByEp.TryAdd(session.EndPoint, acceptingSession);
+                }
+            }
+
             if (session.ConnectionId != null)
             {
                 _sessionsByCid.TryRemove(session.ConnectionId, out _);
             }
+            else
+            {
+                _sessionsByEp.TryRemove(session.EndPoint, out _);
+            }
         }
 
-        public void ReplaceSessionEndpoint(IPEndPoint oldEndPoint, IPEndPoint newEndPoint)
+        public IEnumerable<TSession> GetSessions()
         {
-            _acceptingSessionsByEp.TryRemove(oldEndPoint, out _);
-            if (_sessionsByEp.TryRemove(oldEndPoint, out var session))
-            {
-                if (_sessionsByEp.TryAdd(newEndPoint, session))
-                {
-                    _logger.LogInformation("Replacing endpoint {OldEndPoint} with {NewEndPoint}", oldEndPoint, newEndPoint);
-                }
-                else
-                {
-                    _logger.LogWarning("Couldn't add session because endpoint {NewEndPoint} is already in use!", newEndPoint);
-                    session.Dispose();
-                }
-            }
+            return _acceptingSessionsByEp.Values.Concat(_sessionsByEp.Values).Concat(_sessionsByCid.Values);
         }
 
         public int GetCount()
         {
-            return _sessionsByEp.Count;
+            return _acceptingSessionsByEp.Count + _sessionsByEp.Count + _sessionsByCid.Count;
         }
 
         private class ConnectionIdComparer : IEqualityComparer<byte[]>

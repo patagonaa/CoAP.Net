@@ -21,11 +21,13 @@ namespace CoAPNet.Dtls.Server
         private readonly DtlsServerConfig _config;
         private readonly ILogger<CoapDtlsServerTransport> _logger;
         private readonly DtlsServerProtocol _serverProtocol;
-        private readonly DtlsSessionStore _sessions;
+        private readonly DtlsSessionStore<CoapDtlsServerClientEndPoint> _sessions;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly BlockingCollection<UdpSendPacket> _sendQueue = new BlockingCollection<UdpSendPacket>();
 
         private UdpClient? _socket;
+
+        private int? _connectionIdLength;
 
         #region Stats
         private int _handshakeSuccessCount = 0;
@@ -57,7 +59,7 @@ namespace CoAPNet.Dtls.Server
 
             _serverProtocol = new DtlsServerProtocol();
 
-            _sessions = new DtlsSessionStore(loggerFactory.CreateLogger<DtlsSessionStore>());
+            _sessions = new DtlsSessionStore<CoapDtlsServerClientEndPoint>(loggerFactory.CreateLogger<DtlsSessionStore<CoapDtlsServerClientEndPoint>>());
         }
 
         internal DtlsStatistics GetStatistics()
@@ -130,7 +132,7 @@ namespace CoAPNet.Dtls.Server
                         throw;
                     }
 
-                    var packetSessionType = _sessions.TryFindSession(data, out var session);
+                    var packetSessionType = _sessions.TryFindSession(data.RemoteEndPoint, GetConnectionId(data.Buffer), out var session);
 
                     switch (packetSessionType)
                     {
@@ -159,13 +161,13 @@ namespace CoAPNet.Dtls.Server
                             data.RemoteEndPoint,
                             NetworkMtu,
                             packet => _sendQueue.Add(packet),
-                            (oldEp, newEp) => _sessions.ReplaceSessionEndpoint(oldEp, newEp),
                             DateTime.UtcNow);
-                        session.EnqueueDatagram(data.Buffer, data.RemoteEndPoint);
 
-                        _sessions.Add(session);
                         try
                         {
+                            session.EnqueueDatagram(data.Buffer, data.RemoteEndPoint);
+
+                            _sessions.Add(session);
                             _logger.LogInformation("New connection from {EndPoint}; Active Sessions: {ActiveSessions}", data.RemoteEndPoint, _sessions.GetCount());
 
                             _ = Task.Factory.StartNew(() => HandleSession(session), TaskCreationOptions.LongRunning);
@@ -174,6 +176,7 @@ namespace CoAPNet.Dtls.Server
                         {
                             _logger.LogError(ex, "Exception while starting session handler!");
                             _sessions.Remove(session);
+                            session.Dispose();
                         }
                     }
                     else if (packetSessionType == DtlsSessionFindResult.FoundByEndPoint || packetSessionType == DtlsSessionFindResult.FoundByConnectionId)
@@ -193,6 +196,45 @@ namespace CoAPNet.Dtls.Server
                 {
                     _logger.LogError(ex, "Error while handling incoming datagrams");
                 }
+            }
+        }
+
+        private byte[]? GetConnectionId(byte[] packet)
+        {
+            try
+            {
+                if (!_connectionIdLength.HasValue)
+                    return null;
+
+                const int headerCidOffset = 11;
+                var cidLength = _connectionIdLength.Value;
+
+                if (packet.Length >= (headerCidOffset + cidLength) && packet[0] == ContentType.tls12_cid)
+                {
+                    var cid = new byte[cidLength];
+                    Array.Copy(packet, headerCidOffset, cid, 0, cidLength);
+                    return cid;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while getting cid from {Packet}", packet);
+                return null;
+            }
+        }
+
+        private void SetConnectionIdLength(int sessionCidLength)
+        {
+            if (_connectionIdLength.HasValue)
+            {
+                if (sessionCidLength != _connectionIdLength.Value)
+                    throw new InvalidOperationException("Connection IDs must have constant length!");
+            }
+            else
+            {
+                _connectionIdLength = sessionCidLength;
             }
         }
 
@@ -255,6 +297,10 @@ namespace CoAPNet.Dtls.Server
                         Interlocked.Increment(ref _handshakeErrorCount);
                         throw;
                     }
+                    if (session.ConnectionId != null)
+                    {
+                        SetConnectionIdLength(session.ConnectionId.Length);
+                    }
                     _sessions.NotifySessionAccepted(session);
 
                     using (session.ConnectionInfo != null ? _logger.BeginScope(session.ConnectionInfo) : null)
@@ -263,9 +309,11 @@ namespace CoAPNet.Dtls.Server
 
                         var connectionInfo = new CoapDtlsConnectionInformation(_endPoint, session, server);
 
-                        while (!session.IsClosed && !_cts.IsCancellationRequested)
+                        var cancellationToken = _cts.Token;
+                        while (true)
                         {
-                            var packet = await session.ReceiveAsync(_cts.Token);
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var packet = await session.ReceiveAsync(cancellationToken);
 
                             using (_logger.BeginScope(new Dictionary<string, object> { { "RemoteEndPoint", session.EndPoint } }))
                             {
@@ -296,6 +344,7 @@ namespace CoAPNet.Dtls.Server
                 {
                     _logger.LogInformation("Connection from {EndPoint} closed after {ElapsedMilliseconds}ms", session.EndPoint, (int)(DateTime.UtcNow - session.SessionStartTime).TotalMilliseconds);
                     _sessions.Remove(session);
+                    session.Dispose();
                 }
             }
         }
@@ -303,8 +352,7 @@ namespace CoAPNet.Dtls.Server
         private bool IsCanceledException(Exception ex)
         {
             return ex is OperationCanceledException ||
-                ex is DtlsConnectionClosedException ||
-                (ex is TlsFatalAlert tlsAlert && (tlsAlert.InnerException is DtlsConnectionClosedException || tlsAlert.AlertDescription == AlertDescription.user_canceled));
+                (ex is TlsFatalAlert tlsAlert && (tlsAlert.InnerException is OperationCanceledException || tlsAlert.AlertDescription == AlertDescription.user_canceled));
         }
 
         private async Task HandleCleanup()
@@ -316,10 +364,25 @@ namespace CoAPNet.Dtls.Server
                     int cleaned = 0;
                     foreach (var session in _sessions.GetSessions())
                     {
-                        var sessionTimeout = session.ConnectionId != null ? _config.SessionTimeoutWithCid : _config.SessionTimeout;
+                        var hasConnectionId = session.ConnectionId != null;
+                        var sessionTimeout = hasConnectionId ? _config.SessionTimeoutWithCid : _config.SessionTimeout;
                         if (session.LastReceivedTime < DateTime.UtcNow - sessionTimeout)
                         {
-                            session.Dispose();
+                            // do not notify the peer here if we have a connection ID.
+                            // we don't want to send an alert-message to an endpoint that has possibly be reused.
+                            try
+                            {
+                                session.Close(!hasConnectionId);
+                            }
+                            catch (ObjectDisposedException)
+                            {
+                                // race condition: session has already been closed and disposed
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Error while cleaning up session");
+                            }
+
                             cleaned++;
                         }
                     }
@@ -350,7 +413,7 @@ namespace CoAPNet.Dtls.Server
             {
                 try
                 {
-                    session.Dispose();
+                    session.Close(true);
                 }
                 catch
                 {
