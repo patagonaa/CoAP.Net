@@ -1,4 +1,40 @@
-# Change Log for CoAP.Net 
+# Change Log for CoAP.Net
+
+### v0.14.0
+- [#6](https://github.com/patagonaa/CoAP.Net/pull/6) Fix exception when using CID while there are sessions without CID
+- [#7](https://github.com/patagonaa/CoAP.Net/pull/7) Connection ID improvements
+  - Improve logging, statistics
+  - Improve performance, implement CID closer to spec
+  - Seperate DTLS session timeout for sesions with and without CID
+  - Add net60 as target to CoAPNet.Dtls to fix issues with BouncyCastle targets
+  - Enable nullable reference types for CoAPNet.Dtls
+
+### v0.13.0
+- [#5](https://github.com/patagonaa/CoAP.Net/pull/5) Discard packets with invalid CID, improve statistics api
+
+### v0.12.0
+- [#4](https://github.com/patagonaa/CoAP.Net/pull/4) Add handshake / connection statistics to DTLS server
+
+### v0.11.0
+- [#2](https://github.com/patagonaa/CoAP.Net/pull/2) Add log context for DtlsServer
+- [#3](https://github.com/patagonaa/CoAP.Net/pull/3) Add RFC 9146 (DTLS Connection Identifier) support
+
+### v0.10.0
+- [#1](https://github.com/patagonaa/CoAP.Net/pull/1) Upgrade BouncyCastle, improve error handling
+
+### v0.9.0
+- [`d1c7134d`](https://github.com/NZSmartie/CoAP.Net/commit/d1c7134d)
+  [`08b4806c`](https://github.com/NZSmartie/CoAP.Net/commit/08b4806c)
+  [`a572effa`](https://github.com/NZSmartie/CoAP.Net/commit/a572effa)
+  add DTLS support
+- [`ec325b62`](https://github.com/NZSmartie/CoAP.Net/commit/ec325b62) consolidate/upgrade package versions, remove unnecessary core 2.0 support
+- [`45bf76c5`](https://github.com/NZSmartie/CoAP.Net/commit/45bf76c5) Drop .Net Standard 1.3 support
+
+### v0.8.10
+- [#19](https://github.com/NZSmartie/CoAP.Net/pull/19) add connection information to resource handler
+
+### v0.8.9
+- https://github.com/NZSmartie/CoAP.Net/compare/v0.7.0...v0.8.9
  
 ### v0.7.0
 
