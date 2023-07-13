@@ -109,7 +109,7 @@ namespace CoAPNet.Udp
                     var request = await _endPoint.ReceiveAsync(_listenTaskCTS.Token);
                     _logger?.LogDebug(CoapUdpLoggingEvents.TransportRequestsLoop, "Received message");
 
-                    _ = ProcessRequestAsync(new CoapConnectionInformation
+                    _ = ProcessRequestAsync(new CoapUdpConnectionInformation
                     {
                         LocalEndpoint = _endPoint,
                         RemoteEndpoint = request.Endpoint,

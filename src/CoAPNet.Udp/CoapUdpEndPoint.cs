@@ -26,18 +26,18 @@ using Microsoft.Extensions.Logging;
 
 namespace CoAPNet.Udp
 {
-    public class CoapConnectionInformation : ICoapConnectionInformation
+    public class CoapUdpConnectionInformation : ICoapConnectionInformation
     {
         public ICoapEndpoint LocalEndpoint { get; set; }
-        public ICoapEndpoint RemoteEndpoint { get; set; }
+        public ICoapEndpointInfo RemoteEndpoint { get; set; }
     }
 
     public class CoapUdpEndPoint : ICoapEndpoint
     {
         private readonly ILogger<CoapUdpEndPoint> _logger;
         private readonly IPEndPoint _endpoint;
-        private readonly IPAddress _multicastAddressIPv4 = IPAddress.Parse(Coap.MulticastIPv4);
-        private readonly IPAddress[] _multicastAddressIPv6 = Enumerable.Range(1,13).Select(n => IPAddress.Parse(Coap.GetMulticastIPv6ForScope(n))).ToArray();
+        private static readonly IPAddress _multicastAddressIPv4 = IPAddress.Parse(Coap.MulticastIPv4);
+        private static readonly IPAddress[] _multicastAddressIPv6 = Enumerable.Range(1, 13).Select(n => IPAddress.Parse(Coap.GetMulticastIPv6ForScope(n))).ToArray();
 
         public IPEndPoint Endpoint => (IPEndPoint)Client?.Client.LocalEndPoint ?? _endpoint;
 
@@ -56,7 +56,7 @@ namespace CoAPNet.Udp
         public bool JoinMulticast { get; set; }
 
         public CoapUdpEndPoint(UdpClient udpClient, ILogger<CoapUdpEndPoint> logger = null)
-            :this((IPEndPoint)udpClient.Client.LocalEndPoint, logger)
+            : this((IPEndPoint)udpClient.Client.LocalEndPoint, logger)
         {
             Client = udpClient;
         }
@@ -70,7 +70,7 @@ namespace CoAPNet.Udp
         { }
 
         public CoapUdpEndPoint(string ipAddress, int port = 0, ILogger<CoapUdpEndPoint> logger = null)
-            :this(new IPEndPoint(IPAddress.Parse(ipAddress), port), logger)
+            : this(new IPEndPoint(IPAddress.Parse(ipAddress), port), logger)
         { }
 
         public CoapUdpEndPoint(IPEndPoint endpoint, ILogger<CoapUdpEndPoint> logger = null)
@@ -91,7 +91,7 @@ namespace CoAPNet.Udp
         {
             if (Client != null)
                 throw new InvalidOperationException($"Can not bind {nameof(CoapUdpEndPoint)} as it is already bound");
-            if(!Bindable)
+            if (!Bindable)
                 throw new InvalidOperationException("Can not bind to remote endpoint");
 
 
@@ -145,13 +145,13 @@ namespace CoAPNet.Udp
                     await Task.WhenAny(receiveTask, tcs.Task);
 
                     // Return a result if we have it already, there are no more async operations left.
-                    if(!receiveTask.IsCompleted)
+                    if (!receiveTask.IsCompleted)
                         token.ThrowIfCancellationRequested();
 
                     return new CoapPacket
                     {
                         Payload = receiveTask.Result.Buffer,
-                        Endpoint = new CoapUdpEndPoint(receiveTask.Result.RemoteEndPoint) {Bindable = false},
+                        Endpoint = new CoapUdpEndpointInfo(receiveTask.Result.RemoteEndPoint),
                     };
                 }
             }
@@ -170,39 +170,9 @@ namespace CoAPNet.Udp
             if (Client == null)
                 await BindAsync();
 
-
-            CoapUdpEndPoint udpDestEndpoint;
-            switch (packet.Endpoint)
+            if (packet.Endpoint is not CoapUdpEndpointInfo udpDestination)
             {
-                case CoapUdpEndPoint udpEndPoint:
-                    udpDestEndpoint = udpEndPoint;
-                    break;
-                case CoapEndpoint coapEndpoint:
-                    int port = coapEndpoint.BaseUri.Port;
-                    if (port == -1)
-                        port = coapEndpoint.IsSecure ? Coap.PortDTLS : Coap.Port;
-
-                    IPAddress address = null;
-                    if (coapEndpoint.IsMulticast)
-                        address = _multicastAddressIPv4;
-                    else if (coapEndpoint.BaseUri.HostNameType == UriHostNameType.IPv4 || coapEndpoint.BaseUri.HostNameType == UriHostNameType.IPv6)
-                        address = IPAddress.Parse(coapEndpoint.BaseUri.Host);
-                    else if (coapEndpoint.BaseUri.HostNameType == UriHostNameType.Dns)
-                        // TODO: how do we select the best ip address after looking it up?
-                        address = (await Dns.GetHostAddressesAsync(coapEndpoint.BaseUri.Host)).FirstOrDefault();
-                    else
-                        throw new CoapUdpEndpointException($"Unsupported Uri HostNameType ({coapEndpoint.BaseUri.HostNameType:G}");
-
-                    // Check is we still don't have an address
-                    if (address == null)
-                        throw new CoapUdpEndpointException($"Can not resolve host name for {coapEndpoint.BaseUri.Host}");
-
-                    udpDestEndpoint = new CoapUdpEndPoint(address, port); // TODO: Support sending to IPv6 multicast endpoints as well.
-
-
-                    break;
-                default:
-                    throw new CoapUdpEndpointException($"Unsupported {nameof(CoapPacket)}.{nameof(CoapPacket.Endpoint)} type ({packet.Endpoint.GetType().FullName})");
+                throw new ArgumentException("Endpoint must be CoapUdpEndpointInfo");
             }
 
             token.ThrowIfCancellationRequested();
@@ -212,8 +182,8 @@ namespace CoAPNet.Udp
             {
                 try
                 {
-                    await Task.WhenAny(Client.SendAsync(packet.Payload, packet.Payload.Length, udpDestEndpoint.Endpoint), tcs.Task);
-                    if(token.IsCancellationRequested)
+                    await Task.WhenAny(Client.SendAsync(packet.Payload, packet.Payload.Length, udpDestination.IPEndPoint), tcs.Task);
+                    if (token.IsCancellationRequested)
                         Client.Dispose(); // Since UdpClient doesn't provide a mechanism for cancelling an async task. the safest way is to dispose the whole object
                 }
                 catch (SocketException se)
@@ -247,7 +217,7 @@ namespace CoAPNet.Udp
         /// <inheritdoc />
         public override bool Equals(object obj)
         {
-            if(obj is CoapUdpEndPoint other)
+            if (obj is CoapUdpEndPoint other)
             {
                 if (!other._endpoint.Equals(_endpoint))
                     return false;
@@ -268,5 +238,57 @@ namespace CoAPNet.Udp
                  ^ (IsSecure.GetHashCode() ^ 1074623538);
         }
 
+        public async Task<ICoapEndpointInfo> GetEndpointInfoFromMessage(CoapMessage message)
+        {
+            var uri = new UriBuilder(message.GetUri()) { Path = "/", Fragment = "", Query = "" }.Uri;
+
+            int port = uri.Port;
+            if (port == -1)
+                port = IsSecure ? Coap.PortDTLS : Coap.Port;
+
+            IPAddress address;
+            if (message.IsMulticast)
+            {
+                // TODO: Support sending to IPv6 multicast endpoints as well.
+                address = _multicastAddressIPv4;
+            }
+            else if (uri.HostNameType == UriHostNameType.IPv4 || uri.HostNameType == UriHostNameType.IPv6)
+            {
+                address = IPAddress.Parse(uri.Host);
+            }
+            else if (uri.HostNameType == UriHostNameType.Dns)
+            {
+                // TODO: how do we select the best ip address after looking it up?
+                address = (await Dns.GetHostAddressesAsync(uri.Host)).FirstOrDefault();
+            }
+            else
+            {
+                throw new CoapUdpEndpointException($"Unsupported Uri HostNameType ({uri.HostNameType:G}");
+            }
+
+            // Check is we still don't have an address
+            if (address == null)
+                throw new CoapUdpEndpointException($"Can not resolve host name for {uri.Host}");
+
+            return new CoapUdpEndpointInfo(new IPEndPoint(address, port));
+        }
+
+        internal class CoapUdpEndpointInfo : ICoapEndpointInfo
+        {
+            public IPEndPoint IPEndPoint { get; }
+            public bool IsMulticast { get; }
+
+            public CoapUdpEndpointInfo(IPEndPoint ipEndPoint)
+            {
+                IPEndPoint = ipEndPoint;
+                IsMulticast = ipEndPoint.Address.Equals(_multicastAddressIPv4) || _multicastAddressIPv6.Contains(ipEndPoint.Address);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is CoapUdpEndpointInfo info &&
+                       EqualityComparer<IPEndPoint>.Default.Equals(IPEndPoint, info.IPEndPoint);
+            }
+        }
     }
 }

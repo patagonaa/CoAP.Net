@@ -34,11 +34,11 @@ namespace CoAPNet.Client
         /// <param name="response"></param>
         /// <param name="request"></param>
         /// <param name="endpoint"></param>
-        public CoapBlockStreamReader(CoapClient client, CoapMessage respose, CoapMessage request, ICoapEndpoint endpoint = null)
-            : this(request.CreateBlockWiseContext(client, respose), endpoint)
+        public CoapBlockStreamReader(CoapClient client, CoapMessage response, CoapMessage request, ICoapEndpointInfo endpoint = null)
+            : this(request.CreateBlockWiseContext(client, response), endpoint)
         { }
 
-        public CoapBlockStreamReader(CoapBlockWiseContext context, ICoapEndpoint endpoint = null)
+        public CoapBlockStreamReader(CoapBlockWiseContext context, ICoapEndpointInfo endpoint = null)
             : base(context, endpoint)
         {
             if (context.Response == null)

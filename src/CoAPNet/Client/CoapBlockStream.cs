@@ -26,7 +26,7 @@ namespace CoAPNet.Client
 
         protected int BlockSizeInternal = DefaultBlockSize;
 
-        protected readonly ICoapEndpoint Endpoint;
+        protected readonly ICoapEndpointInfo Endpoint;
 
         protected Exception CaughtException;
 
@@ -64,7 +64,7 @@ namespace CoAPNet.Client
             }
         }
 
-        protected CoapBlockStream(CoapBlockWiseContext context, ICoapEndpoint endpoint = null)
+        protected CoapBlockStream(CoapBlockWiseContext context, ICoapEndpointInfo endpoint = null)
         {
             Context = context ?? throw new ArgumentNullException(nameof(context));
 

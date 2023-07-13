@@ -1,12 +1,12 @@
 ﻿#region License
 // Copyright 2017 Roman Vaughan (NZSmartie)
-//  
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +24,8 @@ using NUnit.Framework;
 using Moq;
 using CoAPNet.Tests.Mocks;
 using CoAPNet.Client;
+using static CoAPNet.Tests.CoapMiscellaneous;
+using System.Net;
 
 namespace CoAPNet.Tests
 {
@@ -60,7 +62,7 @@ namespace CoAPNet.Tests
             // Assert
             mockClientEndpoint.Verify(cep => cep.SendAsync(It.IsAny<CoapPacket>(), It.IsAny<CancellationToken>()));
         }
-        
+
         [Test]
         [Category("CoapClient")]
         public async Task TestClientResponse()
@@ -425,7 +427,7 @@ namespace CoAPNet.Tests
             using (var client = new CoapClient(mockClientEndpoint.Object))
             {
                 var ct = new CancellationTokenSource(MaxTaskTimeout);
-                
+
                 try
                 {
                     while (true)
@@ -603,9 +605,10 @@ namespace CoAPNet.Tests
         {
             // Arrange
             var mockClientEndpoint = new Mock<MockEndpoint> { CallBase = true };
+
             mockClientEndpoint
                 // Ensure a multicast placeholder endpoint is used.
-                .Setup(e => e.SendAsync(It.Is<CoapPacket>(p => p.Endpoint is CoapEndpoint && p.Endpoint.IsMulticast == true), It.IsAny<CancellationToken>()))
+                .Setup(e => e.SendAsync(It.Is<CoapPacket>(p => p.Endpoint is CoapEndpointInfoMock && p.Endpoint.IsMulticast == true), It.IsAny<CancellationToken>()))
                 .CallBase()
                 .Verifiable("Message was not sent via multicast endpoint");
 
@@ -645,7 +648,7 @@ namespace CoAPNet.Tests
                 .CallBase()
                 .Verifiable("Message was not sent via multicast endpoint");
 
-            var destEndpoint = new CoapEndpoint { IsMulticast = true };
+            var destEndpoint = new CoapEndpointInfoMock(IPEndPoint.Parse("1.2.3.4:1234"), true);
 
             var message = new CoapMessage
             {
@@ -679,7 +682,7 @@ namespace CoAPNet.Tests
             // Arrange
             var mockClientEndpoint = new Mock<MockEndpoint> { CallBase = true };
 
-            var destEndpoint = new CoapEndpoint { IsMulticast = true };
+            var destEndpoint = new CoapEndpointInfoMock(IPEndPoint.Parse("1.2.3.4:1234"), true);
 
             var message = new CoapMessage
             {
@@ -692,7 +695,7 @@ namespace CoAPNet.Tests
                     },
                 Payload = Encoding.UTF8.GetBytes("</.well-known/core>")
             };
-            
+
             // Ack
             AsyncTestDelegate action = async () => {
                 using (var client = new CoapClient(mockClientEndpoint.Object))
@@ -714,7 +717,7 @@ namespace CoAPNet.Tests
             // Arrange
             var mockClientEndpoint = new Mock<MockEndpoint> { CallBase = true };
 
-            var destEndpoint = new CoapEndpoint { IsMulticast = false };
+            var destEndpoint = new CoapEndpointInfoMock(IPEndPoint.Parse("1.2.3.4:1234"), false);
 
             var message = new CoapMessage
             {

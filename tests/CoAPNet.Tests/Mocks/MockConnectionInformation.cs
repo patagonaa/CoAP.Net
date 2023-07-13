@@ -11,6 +11,6 @@ namespace CoAPNet.Tests.Mocks
 
         public ICoapEndpoint LocalEndpoint { get; }
 
-        public ICoapEndpoint RemoteEndpoint => new Mock<ICoapEndpoint>().Object;
+        public ICoapEndpointInfo RemoteEndpoint => new Mock<ICoapEndpointInfo>().Object;
     }
 }

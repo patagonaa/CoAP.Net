@@ -32,11 +32,11 @@ namespace CoAPNet.Client
         /// <param name="client"></param>
         /// <param name="baseMessage"></param>
         /// <param name="endpoint"></param>
-        public CoapBlockStreamWriter(CoapClient client, CoapMessage baseMessage, ICoapEndpoint endpoint = null)
+        public CoapBlockStreamWriter(CoapClient client, CoapMessage baseMessage, ICoapEndpointInfo endpoint = null)
             : this(baseMessage.CreateBlockWiseContext(client), endpoint)
         { }
 
-        public CoapBlockStreamWriter(CoapBlockWiseContext context, ICoapEndpoint endpoint = null)
+        public CoapBlockStreamWriter(CoapBlockWiseContext context, ICoapEndpointInfo endpoint = null)
             : base(context, endpoint)
         {
             if (!Context.Request.Code.IsRequest())
