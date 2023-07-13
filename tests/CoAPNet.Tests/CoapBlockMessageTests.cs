@@ -1,4 +1,5 @@
-﻿using CoAPNet.Options;
+﻿using CoAPNet.Client;
+using CoAPNet.Options;
 using CoAPNet.Tests.Mocks;
 using CoAPNet.Tests.Utils;
 using Moq;

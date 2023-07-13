@@ -2,15 +2,14 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using CoAPNet;
 using CoAPNet.Options;
 
-namespace CoAPNet
+namespace CoAPNet.Client
 {
     public static class CoapMessageBlockExtensions
     {
         /// <summary>
-        /// Checks if a <see cref="CoapMessage"/> is part ofa block-wise transfer by checking for the presence of either <see cref="CoAPNet.Options.Block1"/> or <see cref="CoAPNet.Options.Block2"/>.
+        /// Checks if a <see cref="CoapMessage"/> is part ofa block-wise transfer by checking for the presence of either <see cref="Block1"/> or <see cref="Block2"/>.
         /// </summary>
         /// <param name="message"></param>
         /// <returns><c>true</c> when <paramref name="message"/> is part of a Block-Wise transfer</returns>
@@ -28,8 +27,8 @@ namespace CoAPNet
         /// <returns>The completed body for the block-wise messages.</returns>
         public static byte[] GetCompletedBlockWisePayload(this CoapMessage message, CoapClient client, CoapMessage originalRequest)
         {
-            var block2 = message.Options.Get<Options.Block2>()
-                         ?? throw new ArgumentException($"{nameof(CoapMessage)} does not contain a {nameof(Options.Block2)} option", nameof(message));
+            var block2 = message.Options.Get<Block2>()
+                         ?? throw new ArgumentException($"{nameof(CoapMessage)} does not contain a {nameof(Block2)} option", nameof(message));
 
             if (originalRequest == null)
                 throw new ArgumentNullException("Please provide original requesting message", nameof(originalRequest));

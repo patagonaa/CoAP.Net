@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CoAPNet;
+using CoAPNet.Client;
 using CoAPNet.Dtls.Client;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Tls;

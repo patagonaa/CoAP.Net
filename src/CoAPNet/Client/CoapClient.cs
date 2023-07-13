@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 using CoAPNet;
 using CoAPNet.Utils;
 
-namespace CoAPNet
+namespace CoAPNet.Client
 {
     /// <summary>
     /// Represents CoAP specific errors that occur during calls inside of <see cref="CoapClient"/>.
@@ -35,27 +35,27 @@ namespace CoAPNet
     public class CoapClientException : CoapException
     {
         /// <inheritdoc/>
-        public CoapClientException() 
+        public CoapClientException()
             : base()
         { }
 
         /// <inheritdoc/>
-        public CoapClientException(string message) 
+        public CoapClientException(string message)
             : base(message)
         { }
 
         /// <inheritdoc/>
-        public CoapClientException(string message, Exception innerException) 
+        public CoapClientException(string message, Exception innerException)
             : base(message, innerException)
         { }
 
         /// <inheritdoc/>
-        public CoapClientException(string message, CoapMessageCode responseCode) 
+        public CoapClientException(string message, CoapMessageCode responseCode)
             : base(message, responseCode)
         { }
 
         /// <inheritdoc/>
-        public CoapClientException(string message, Exception innerException, CoapMessageCode responseCode) 
+        public CoapClientException(string message, Exception innerException, CoapMessageCode responseCode)
             : base(message, innerException, responseCode)
         { }
     }
@@ -82,7 +82,7 @@ namespace CoAPNet
         public TimeSpan MessageCacheTimeSpan { get; set; } = TimeSpan.FromMinutes(1);
 
         // I'm not particularly fond of the following _messageQueue and _messageResponses... Feels more like a hack. but it works? NEEDS MORE TESTING!!!
-        private readonly ConcurrentDictionary<CoapMessageIdentifier, TaskCompletionSource<CoapMessage>> _messageResponses 
+        private readonly ConcurrentDictionary<CoapMessageIdentifier, TaskCompletionSource<CoapMessage>> _messageResponses
             = new ConcurrentDictionary<CoapMessageIdentifier, TaskCompletionSource<CoapMessage>>();
 
         /// <summary>
@@ -154,7 +154,7 @@ namespace CoAPNet
             }
             if (resultTask != null)
                 return await resultTask;
-            
+
             if (Endpoint == null)
                 throw new CoapEndpointException($"{nameof(CoapClient)} does not have a valid endpoint");
 
@@ -163,11 +163,11 @@ namespace CoAPNet
             do
             {
                 token.ThrowIfCancellationRequested();
-                    
+
                 await _receiveEvent.WaitAsync(token);
 
             } while (!_receiveQueue.TryDequeue(out resultTask));
-            
+
             // Task sould already be in the completed,cancelled or error'd state.
             return await resultTask;
         }
@@ -265,7 +265,7 @@ namespace CoAPNet
                 {
                     var endpoint = Endpoint;
                     Endpoint = null;
-                    
+
                     endpoint?.Dispose();
 
                     foreach (var response in _messageResponses.Values)
@@ -289,7 +289,7 @@ namespace CoAPNet
                 // Clear out expired messageIds
                 while (_recentMessages.Count > 0)
                 {
-                    if(_recentMessages.Peek().Item1 >= clearBefore)
+                    if (_recentMessages.Peek().Item1 >= clearBefore)
                         break;
                     _recentMessages.Dequeue();
                 }
@@ -331,7 +331,7 @@ namespace CoAPNet
         /// <param name="token">Token to cancel the blocking Receive operation</param>
         /// <returns>Valid result if a result is received, <c>null</c> if canceled.</returns>
         /// <exception cref="CoapClientException">If the timeout period * maximum retransmission attempts was reached.</exception>
-        public Task<CoapMessage> GetResponseAsync(CoapMessage request, ICoapEndpoint endpoint = null, bool isRequest = false, CancellationToken token = default(CancellationToken), bool dequeue = true)
+        public Task<CoapMessage> GetResponseAsync(CoapMessage request, ICoapEndpoint endpoint = null, bool isRequest = false, CancellationToken token = default, bool dequeue = true)
             => GetResponseAsync(request.GetIdentifier(endpoint, isRequest), token, dequeue);
 
 
@@ -343,14 +343,14 @@ namespace CoAPNet
         /// <returns>Valid result if a result is received, <c>null</c> if canceled.</returns>
         /// <exception cref="CoapClientException">If the timeout period * maximum retransmission attempts was reached.</exception>
         [Obsolete("In favor of GetResponseAsync(CoapMessage request, ...)")]
-        public Task<CoapMessage> GetResponseAsync(int messageId, CancellationToken token = default(CancellationToken), bool dequeue = true)
+        public Task<CoapMessage> GetResponseAsync(int messageId, CancellationToken token = default, bool dequeue = true)
         {
             // Assume message was Confirmable
             return GetResponseAsync(new CoapMessageIdentifier(messageId, CoapMessageType.Confirmable), token, dequeue);
         }
 
         // TODO: Ignore Acks, we're actually interested in a response.
-        public async Task<CoapMessage> GetResponseAsync(CoapMessageIdentifier messageId, CancellationToken token = default(CancellationToken), bool dequeue = true)
+        public async Task<CoapMessage> GetResponseAsync(CoapMessageIdentifier messageId, CancellationToken token = default, bool dequeue = true)
         {
             TaskCompletionSource<CoapMessage> responseTask = null;
 
@@ -358,7 +358,7 @@ namespace CoAPNet
                 throw new CoapClientException($"The current message id ({messageId}) is not pending a due response");
 
             if (responseTask.Task.IsCompleted)
-                lock(_recentMessages)
+                lock (_recentMessages)
                     return _recentMessages.FirstOrDefault(m => m.Item3.GetIdentifier() == messageId)?.Item3
                         ?? throw new CoapClientException($"No recent message found for {messageId}. This may happen when {nameof(MessageCacheTimeSpan)} is too short");
 
@@ -393,7 +393,7 @@ namespace CoAPNet
         /// </summary>
         /// <param name="message"></param>
         /// <returns></returns>
-        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message) 
+        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message)
             => await SendAsync(message, null, CancellationToken.None);
 
         /// <summary>
@@ -402,7 +402,7 @@ namespace CoAPNet
         /// <param name="message"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message, CancellationToken token) 
+        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message, CancellationToken token)
             => await SendAsync(message, null, token);
 
         /// <summary>
@@ -411,10 +411,10 @@ namespace CoAPNet
         /// <param name="message"></param>
         /// <param name="endpoint"></param>
         /// <returns></returns>
-        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message, ICoapEndpoint endpoint) 
+        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message, ICoapEndpoint endpoint)
             => await SendAsync(message, endpoint, CancellationToken.None);
 
-        private int GetNextMessageId() 
+        private int GetNextMessageId()
             => Interlocked.Increment(ref _messageId) & ushort.MaxValue;
 
         /// <summary>
@@ -488,7 +488,7 @@ namespace CoAPNet
             Task task;
             lock (this)
             {
-                task = (Endpoint == null)
+                task = Endpoint == null
                     ? Task.CompletedTask
                     : Endpoint.SendAsync(new CoapPacket
                     {
@@ -504,8 +504,8 @@ namespace CoAPNet
         {
             Interlocked.Exchange(ref _messageId, value - 1);
         }
-        
-#region Request Operations
+
+        #region Request Operations
 
         /// <summary>
         /// Performs a async <see cref="CoapMessageCode.Get"/> request to the <paramref name="uri"/>.
@@ -513,7 +513,7 @@ namespace CoAPNet
         /// <param name="uri"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        public virtual async Task<CoapMessageIdentifier> GetAsync(string uri, CancellationToken token = default(CancellationToken))
+        public virtual async Task<CoapMessageIdentifier> GetAsync(string uri, CancellationToken token = default)
         {
             return await GetAsync(uri, null, token);
         }
@@ -525,7 +525,7 @@ namespace CoAPNet
         /// <param name="endpoint"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        public virtual async Task<CoapMessageIdentifier> GetAsync(string uri, ICoapEndpoint endpoint, CancellationToken token = default(CancellationToken))
+        public virtual async Task<CoapMessageIdentifier> GetAsync(string uri, ICoapEndpoint endpoint, CancellationToken token = default)
         {
             var message = new CoapMessage
             {
@@ -580,7 +580,7 @@ namespace CoAPNet
             throw new NotImplementedException();
         }
 
-#endregion
+        #endregion
 
 
     }

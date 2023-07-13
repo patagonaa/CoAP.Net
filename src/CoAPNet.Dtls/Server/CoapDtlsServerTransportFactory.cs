@@ -1,5 +1,6 @@
 ﻿using System;
 using CoAPNet.Dtls.Server.Statistics;
+using CoAPNet.Server;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

@@ -22,9 +22,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Moq;
-
-using CoAPNet;
 using CoAPNet.Tests.Mocks;
+using CoAPNet.Client;
 
 namespace CoAPNet.Tests
 {

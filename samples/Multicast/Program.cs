@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CoAPNet;
+using CoAPNet.Client;
 using CoAPNet.Udp;
 
 namespace CoAPDevices
@@ -30,7 +31,7 @@ namespace CoAPDevices
             try
             {
                 // Run a Send task and Receive task concurrently
-                await Task.WhenAny(
+                await Task.WhenAll(
                     SendAsync(client, cancellationTokenSource.Token),
                     ReceiveAsync(client, cancellationTokenSource.Token));
             }

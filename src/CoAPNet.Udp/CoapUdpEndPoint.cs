@@ -1,12 +1,12 @@
 ﻿#region License
 // Copyright 2017 Roman Vaughan (NZSmartie)
-//  
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -188,7 +188,7 @@ namespace CoAPNet.Udp
                     else if (coapEndpoint.BaseUri.HostNameType == UriHostNameType.IPv4 || coapEndpoint.BaseUri.HostNameType == UriHostNameType.IPv6)
                         address = IPAddress.Parse(coapEndpoint.BaseUri.Host);
                     else if (coapEndpoint.BaseUri.HostNameType == UriHostNameType.Dns)
-                        // TODO: how do we select the best ip address after looking it up? 
+                        // TODO: how do we select the best ip address after looking it up?
                         address = (await Dns.GetHostAddressesAsync(coapEndpoint.BaseUri.Host)).FirstOrDefault();
                     else
                         throw new CoapUdpEndpointException($"Unsupported Uri HostNameType ({coapEndpoint.BaseUri.HostNameType:G}");
@@ -199,7 +199,7 @@ namespace CoAPNet.Udp
 
                     udpDestEndpoint = new CoapUdpEndPoint(address, port); // TODO: Support sending to IPv6 multicast endpoints as well.
 
-                    
+
                     break;
                 default:
                     throw new CoapUdpEndpointException($"Unsupported {nameof(CoapPacket)}.{nameof(CoapPacket.Endpoint)} type ({packet.Endpoint.GetType().FullName})");

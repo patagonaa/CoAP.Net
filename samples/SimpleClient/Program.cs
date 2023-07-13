@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CoAPNet;
+using CoAPNet.Client;
 using CoAPNet.Udp;
 
 namespace CoAPDevices
@@ -12,7 +13,7 @@ namespace CoAPDevices
         static async Task Main(string[] args)
         {
             // Create a new client using a UDP endpoint (defaults to 0.0.0.0 with any available port number)
-            var client = new CoapClient(new CoapUdpEndPoint());
+            using var client = new CoapClient(new CoapUdpEndPoint());
             // Create a cancelation token that cancels after 1 minute
             var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(1));
 

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using CoAPNet.Dtls.Server.Statistics;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Tls;
+using CoAPNet.Server;
 
 namespace CoAPNet.Dtls.Server
 {

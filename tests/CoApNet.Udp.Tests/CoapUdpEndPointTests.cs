@@ -4,6 +4,7 @@ using NUnit.Framework;
 using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
+using CoAPNet.Client;
 
 namespace CoAPNet.Udp.Tests
 {

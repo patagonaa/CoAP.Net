@@ -15,6 +15,7 @@
 #endregion
 
 using System;
+using CoAPNet.Client;
 
 namespace CoAPNet
 {

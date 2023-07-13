@@ -1,12 +1,12 @@
 ﻿#region License
 // Copyright 2017 Roman Vaughan (NZSmartie)
-//  
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +19,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CoAPNet.Options;
 
-namespace CoAPNet
+namespace CoAPNet.Server
 {
     /// <summary>
     /// Metadata about a CoAP resource to be used by <see cref="CoreLinkFormat"/> when generating CoRE Link-Format data at <c>/.well-known/core</c>
@@ -27,7 +27,7 @@ namespace CoAPNet
     public class CoapResourceMetadata
     {
         /// <summary>
-        /// Relative (to this host) or absolute (external host) 
+        /// Relative (to this host) or absolute (external host)
         /// </summary>
         public Uri UriReference { get; }
 
