@@ -21,13 +21,13 @@ namespace CoAPNet.Udp.Tests
             get
             {
                 yield return new TestCaseData(
-                        new CoapMessageIdentifier(1234, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapUdpEndPoint(IPAddress.Parse("1.2.3.4"), 1234), true),
-                        new CoapMessageIdentifier(1234, CoapMessageType.Acknowledgement, new byte[] { 1, 2, 3, 4 }, new CoapUdpEndPoint(IPAddress.Parse("1.2.3.4"), 1234), false))
+                        new CoapMessageIdentifier(1234, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapUdpEndPoint.CoapUdpEndpointInfo(IPEndPoint.Parse("1.2.3.4:1234")), true),
+                        new CoapMessageIdentifier(1234, CoapMessageType.Acknowledgement, new byte[] { 1, 2, 3, 4 }, new CoapUdpEndPoint.CoapUdpEndpointInfo(IPEndPoint.Parse("1.2.3.4:1234")), false))
                     .Returns(true);
 
                 yield return new TestCaseData(
-                        new CoapMessageIdentifier(1234, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapUdpEndPoint(IPAddress.Parse("1.2.3.4"), 1234), true),
-                        new CoapMessageIdentifier(5678, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapUdpEndPoint(IPAddress.Parse("1.2.3.4"), 1234), false))
+                        new CoapMessageIdentifier(1234, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapUdpEndPoint.CoapUdpEndpointInfo(IPEndPoint.Parse("1.2.3.4:1234")), true),
+                        new CoapMessageIdentifier(5678, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapUdpEndPoint.CoapUdpEndpointInfo(IPEndPoint.Parse("1.2.3.4:1234")), false))
                     .Returns(true);
             }
         }
