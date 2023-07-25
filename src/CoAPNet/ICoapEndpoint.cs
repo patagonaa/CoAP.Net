@@ -67,30 +67,17 @@ namespace CoAPNet
     }
 
     /// <summary>
-    /// CoAP usses a <see cref="ICoapEndpoint"/> as a addressing mechanism for other CoAP clients and servers on a transport.
+    /// CoAP uses a <see cref="ICoapEndpoint"/> as a addressing mechanism for other CoAP clients and servers on a transport.
     /// </summary>
     public interface ICoapEndpoint : IDisposable
     {
-        /// <summary>
-        /// Gets if this enpoint is encrypted using (e.g. DTLS when the endpoint uses UDP)
-        /// </summary>
-        bool IsSecure { get; }
-
-        /// <summary>
-        /// Gets if this enpoint used for Multicast.
-        /// </summary>
-        /// <remarks>
-        /// Multicast endpoitns do not acknolweged received confirmables.
-        /// </remarks>
-        bool IsMulticast { get; }
-
         /// <summary>
         /// Gets the base URI (excluding path and query) for this endpoint.
         /// </summary>
         Uri BaseUri { get; }
 
         /// <summary>
-        /// Called by [Service] to send a <see cref="CoapPacket.Payload"/> to the specified <see cref="CoapPacket.Endpoint"/> using the endpoint layer provided by the Application Layer
+        /// Called by CoapClient/CoapHandler to send a <see cref="CoapPacket.Payload"/> to the specified <see cref="CoapPacket.Endpoint"/> using this endpoint
         /// </summary>
         /// <param name="packet"></param>
         /// <param name="token"></param>
@@ -98,18 +85,34 @@ namespace CoAPNet
         Task SendAsync(CoapPacket packet, CancellationToken token);
 
         /// <summary>
-        /// Called by [service] to receive data from the endpoint layer
-        /// </summary>
-        /// <returns></returns>
-        Task<CoapPacket> ReceiveAsync(CancellationToken tokens);
-
-        /// <summary>
         /// Returns a string representation of the <see cref="ICoapEndpoint"/>.
         /// </summary>
         /// <param name="format"></param>
         /// <returns></returns>
         string ToString(CoapEndpointStringFormat format);
+    }
 
+    public interface ICoapClientEndpoint : ICoapEndpoint
+    {
+        /// <summary>
+        /// Gets if this endpoint used for Multicast.
+        /// </summary>
+        /// <remarks>
+        /// Multicast endpoints do not acknolwedge received confirmables.
+        /// </remarks>
+        bool IsMulticast { get; }
+
+        /// <summary>
+        /// Used by <see cref="Client.CoapClient"/> to receive data from this endpoint
+        /// </summary>
+        /// <returns></returns>
+        Task<CoapPacket> ReceiveAsync(CancellationToken tokens);
+
+        /// <summary>
+        /// Used by <see cref="Client.CoapClient"/> to determine where to send the <see cref="CoapMessage"/> when no endpoint is specified (usually by its URI)
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
         Task<ICoapEndpointInfo> GetEndpointInfoFromMessage(CoapMessage message);
     }
 }

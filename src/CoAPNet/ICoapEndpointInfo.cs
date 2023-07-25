@@ -17,6 +17,9 @@
 
 namespace CoAPNet
 {
+    /// <summary>
+    /// The information the endpoint needs to send/respond to a specific remote
+    /// </summary>
     public interface ICoapEndpointInfo
     {
         bool IsMulticast { get; }

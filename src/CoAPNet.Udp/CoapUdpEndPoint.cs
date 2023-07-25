@@ -32,7 +32,7 @@ namespace CoAPNet.Udp
         public ICoapEndpointInfo RemoteEndpoint { get; set; }
     }
 
-    public class CoapUdpEndPoint : ICoapEndpoint
+    public class CoapUdpEndPoint : ICoapEndpoint, ICoapClientEndpoint
     {
         private readonly ILogger<CoapUdpEndPoint> _logger;
         private readonly IPEndPoint _endpoint;
@@ -50,8 +50,6 @@ namespace CoAPNet.Udp
         public bool CanReceive => Client?.Client.LocalEndPoint != null;
 
         public bool IsMulticast { get; }
-
-        public bool IsSecure => false;
 
         public bool JoinMulticast { get; set; }
 
@@ -94,9 +92,9 @@ namespace CoAPNet.Udp
             if (!Bindable)
                 throw new InvalidOperationException("Can not bind to remote endpoint");
 
-
-            Client = new UdpClient(AddressFamily.InterNetworkV6) { EnableBroadcast = true };
-            Client.Client.DualMode = true;
+            Client = new UdpClient(_endpoint.AddressFamily) { EnableBroadcast = true };
+            if (_endpoint.Address.Equals(IPAddress.IPv6Any))
+                Client.Client.DualMode = true;
             Client.Client.Bind(_endpoint);
 
             if (JoinMulticast)
@@ -223,8 +221,6 @@ namespace CoAPNet.Udp
                     return false;
                 if (!other.IsMulticast.Equals(IsMulticast))
                     return false;
-                if (!other.IsSecure.Equals(IsSecure))
-                    return false;
                 return true;
             }
             return base.Equals(obj);
@@ -234,8 +230,7 @@ namespace CoAPNet.Udp
         public override int GetHashCode()
         {
             return (_endpoint.GetHashCode() ^ 963144320)
-                 ^ (IsMulticast.GetHashCode() ^ 1491585648)
-                 ^ (IsSecure.GetHashCode() ^ 1074623538);
+                 ^ (IsMulticast.GetHashCode() ^ 1491585648);
         }
 
         public async Task<ICoapEndpointInfo> GetEndpointInfoFromMessage(CoapMessage message)
@@ -244,7 +239,7 @@ namespace CoAPNet.Udp
 
             int port = uri.Port;
             if (port == -1)
-                port = IsSecure ? Coap.PortDTLS : Coap.Port;
+                port = Coap.Port;
 
             IPAddress address;
             if (message.IsMulticast)
@@ -280,14 +275,18 @@ namespace CoAPNet.Udp
 
             public CoapUdpEndpointInfo(IPEndPoint ipEndPoint)
             {
-                IPEndPoint = ipEndPoint;
+                IPEndPoint = ipEndPoint ?? throw new ArgumentNullException(nameof(ipEndPoint));
                 IsMulticast = ipEndPoint.Address.Equals(_multicastAddressIPv4) || _multicastAddressIPv6.Contains(ipEndPoint.Address);
             }
 
             public override bool Equals(object obj)
             {
-                return obj is CoapUdpEndpointInfo info &&
-                       EqualityComparer<IPEndPoint>.Default.Equals(IPEndPoint, info.IPEndPoint);
+                return obj is CoapUdpEndpointInfo info && IPEndPoint.Equals(info.IPEndPoint);
+            }
+
+            public override int GetHashCode()
+            {
+                return IPEndPoint.GetHashCode();
             }
         }
     }

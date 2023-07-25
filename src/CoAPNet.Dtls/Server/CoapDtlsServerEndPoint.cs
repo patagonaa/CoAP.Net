@@ -7,10 +7,6 @@ namespace CoAPNet.Dtls.Server
 {
     public class CoapDtlsServerEndPoint : ICoapEndpoint
     {
-        public bool IsSecure => true;
-
-        public bool IsMulticast => false;
-
         public Uri BaseUri { get; }
         public IPEndPoint IPEndPoint { get; }
 
@@ -30,11 +26,6 @@ namespace CoAPNet.Dtls.Server
 
         public void Dispose()
         {
-        }
-
-        public Task<CoapPacket> ReceiveAsync(CancellationToken tokens)
-        {
-            throw new InvalidOperationException("Receiving can only be done via a DTLS session");
         }
 
         public async Task SendAsync(CoapPacket packet, CancellationToken token)

@@ -24,9 +24,8 @@ using System.Diagnostics;
 
 namespace CoAPNet.Tests.Mocks
 {
-    public class NonDisposableEndpoint : ICoapEndpoint
+    public class NonDisposableEndpoint : ICoapEndpoint, ICoapClientEndpoint
     {
-        public virtual bool IsSecure { get; } = false;
         public virtual bool IsMulticast { get; } = false;
         public virtual Uri BaseUri { get; } = new Uri("coap://localhost/");
 

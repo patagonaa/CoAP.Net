@@ -28,8 +28,6 @@ namespace CoAPNet.Dtls.Client
             _tlsClient = tlsClient;
         }
 
-        public bool IsSecure => true;
-
         public bool IsMulticast => false;
 
         public Uri BaseUri { get; }

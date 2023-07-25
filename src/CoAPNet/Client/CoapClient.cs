@@ -68,7 +68,7 @@ namespace CoAPNet.Client
         /// <summary>
         /// The endpoint which this client is bound to, and performs Send/Receive through.
         /// </summary>
-        public ICoapEndpoint Endpoint { get; private set; }
+        public ICoapClientEndpoint Endpoint { get; private set; }
 
         private int _messageId;
 
@@ -102,7 +102,7 @@ namespace CoAPNet.Client
         /// </summary>
         /// <param name="endpoint">The local CoAP endpoint to bind to and perform Send/Receive operations on.</param>
         /// <exception cref="ArgumentNullException">When <paramref name="endpoint"/> is <c>null</c></exception>
-        public CoapClient(ICoapEndpoint endpoint)
+        public CoapClient(ICoapClientEndpoint endpoint)
         {
             Endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
 
