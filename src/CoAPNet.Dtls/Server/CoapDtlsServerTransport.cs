@@ -22,7 +22,7 @@ namespace CoAPNet.Dtls.Server
         private readonly DtlsServerConfig _config;
         private readonly ILogger<CoapDtlsServerTransport> _logger;
         private readonly DtlsServerProtocol _serverProtocol;
-        private readonly DtlsSessionStore<CoapDtlsServerClientEndPoint> _sessions;
+        private readonly DtlsSessionStore<CoapDtlsSession> _sessions;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly BlockingCollection<UdpSendPacket> _sendQueue = new BlockingCollection<UdpSendPacket>();
 
@@ -60,7 +60,7 @@ namespace CoAPNet.Dtls.Server
 
             _serverProtocol = new DtlsServerProtocol();
 
-            _sessions = new DtlsSessionStore<CoapDtlsServerClientEndPoint>(loggerFactory.CreateLogger<DtlsSessionStore<CoapDtlsServerClientEndPoint>>());
+            _sessions = new DtlsSessionStore<CoapDtlsSession>(loggerFactory.CreateLogger<DtlsSessionStore<CoapDtlsSession>>());
         }
 
         internal DtlsStatistics GetStatistics()
@@ -158,7 +158,7 @@ namespace CoAPNet.Dtls.Server
                     if (packetSessionType == DtlsSessionFindResult.NewSession)
                     {
                         // if there isn't an existing session for this remote endpoint, we start a new one and pass the first datagram to the session
-                        session = new CoapDtlsServerClientEndPoint(
+                        session = new CoapDtlsSession(
                             data.RemoteEndPoint,
                             NetworkMtu,
                             packet => _sendQueue.Add(packet),
@@ -264,7 +264,7 @@ namespace CoAPNet.Dtls.Server
             }
         }
 
-        private async Task HandleSession(CoapDtlsServerClientEndPoint session)
+        private async Task HandleSession(CoapDtlsSession session)
         {
             var state = new Dictionary<string, object>
                 {

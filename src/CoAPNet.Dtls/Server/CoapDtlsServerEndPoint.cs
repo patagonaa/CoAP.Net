@@ -30,8 +30,11 @@ namespace CoAPNet.Dtls.Server
 
         public async Task SendAsync(CoapPacket packet, CancellationToken token)
         {
-            //packet has the CoapDtlsServerClientEndPoint which we have to respond to.
-            await packet.Endpoint.SendAsync(packet, token);
+            //packet has the Session we have to respond to.
+            if (packet.Endpoint is not CoapDtlsSession session)
+                throw new ArgumentException("Can only send DTLS packets");
+
+            await session.SendAsync(packet, token);
         }
 
         public string ToString(CoapEndpointStringFormat format)

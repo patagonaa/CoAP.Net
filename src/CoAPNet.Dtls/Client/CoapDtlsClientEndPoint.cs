@@ -7,7 +7,7 @@ using Org.BouncyCastle.Tls;
 
 namespace CoAPNet.Dtls.Client
 {
-    public class CoapDtlsClientEndPoint : ICoapEndpoint
+    public class CoapDtlsClientEndPoint : ICoapClientEndpoint, ICoapEndpointInfo
     {
         private const int NetworkMtu = 1500;
 
@@ -69,7 +69,8 @@ namespace CoAPNet.Dtls.Client
         public Task SendAsync(CoapPacket packet, CancellationToken token)
         {
             EnsureConnected();
-
+            if (packet.Endpoint != this)
+                throw new InvalidOperationException("Endpoint can only send its own packets");
             if (_datagramTransport == null)
                 throw new InvalidOperationException("Session must be established before sending/receiving any data.");
 
@@ -102,6 +103,11 @@ namespace CoAPNet.Dtls.Client
         public void Dispose()
         {
             _datagramTransport?.Close();
+        }
+
+        public Task<ICoapEndpointInfo> GetEndpointInfoFromMessage(CoapMessage message)
+        {
+            return Task.FromResult<ICoapEndpointInfo>(this);
         }
     }
 }
