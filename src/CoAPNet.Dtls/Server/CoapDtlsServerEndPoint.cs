@@ -37,9 +37,6 @@ namespace CoAPNet.Dtls.Server
             await session.SendAsync(packet, token);
         }
 
-        public string ToString(CoapEndpointStringFormat format)
-        {
-            return BaseUri.ToString();
-        }
+        public override string ToString() => $"udp+dtls://{IPEndPoint}";
     }
 }

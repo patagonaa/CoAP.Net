@@ -45,11 +45,6 @@ namespace CoAPNet.Tests.Mocks
 
         }
 
-        public string ToString(CoapEndpointStringFormat format)
-        {
-            return $"[ {nameof(NonDisposableEndpoint)} ]";
-        }
-
         public Task<ICoapEndpointInfo> GetEndpointInfoFromMessage(CoapMessage message)
         {
             throw new NotImplementedException();

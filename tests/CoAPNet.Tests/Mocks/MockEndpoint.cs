@@ -89,11 +89,6 @@ namespace CoAPNet.Tests.Mocks
             return packet;
         }
 
-        public string ToString(CoapEndpointStringFormat format)
-        {
-            return $"[ {nameof(MockEndpoint)} ]";
-        }
-
         public Task<ICoapEndpointInfo> GetEndpointInfoFromMessage(CoapMessage message)
         {
             return Task.FromResult<ICoapEndpointInfo>(new CoapEndpointInfoMock(IPEndPoint.Parse("1.2.3.4:1234"), message.IsMulticast));

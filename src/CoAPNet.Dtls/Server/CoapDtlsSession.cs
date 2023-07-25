@@ -147,16 +147,6 @@ namespace CoAPNet.Dtls.Server
             return Task.CompletedTask;
         }
 
-        public override string ToString()
-        {
-            return ToString(CoapEndpointStringFormat.Simple);
-        }
-
-        public string ToString(CoapEndpointStringFormat format)
-        {
-            return EndPoint.ToString();
-        }
-
         public void Accept(DtlsServerProtocol serverProtocol, TlsServer server)
         {
             _dtlsTransport = serverProtocol.Accept(server, _udpTransport);

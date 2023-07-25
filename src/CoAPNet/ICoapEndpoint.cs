@@ -52,21 +52,6 @@ namespace CoAPNet
     }
 
     /// <summary>
-    /// Used with <see cref="ICoapEndpoint.ToString(CoapEndpointStringFormat)"/> to get a string representation of a <see cref="ICoapEndpoint"/>.
-    /// </summary>
-    public enum CoapEndpointStringFormat
-    {
-        /// <summary>
-        /// Return a simple string format represeantion of <see cref="ICoapEndpoint"/> (usually in the form of &lt;address&gt;:&lt;port&gt;)
-        /// </summary>
-        Simple,
-        /// <summary>
-        /// Used to get string representation of a <see cref="ICoapEndpoint"/> for debugging purposes.
-        /// </summary>
-        Debuggable,
-    }
-
-    /// <summary>
     /// CoAP uses a <see cref="ICoapEndpoint"/> as a addressing mechanism for other CoAP clients and servers on a transport.
     /// </summary>
     public interface ICoapEndpoint : IDisposable
@@ -83,13 +68,6 @@ namespace CoAPNet
         /// <param name="token"></param>
         /// <returns></returns>
         Task SendAsync(CoapPacket packet, CancellationToken token);
-
-        /// <summary>
-        /// Returns a string representation of the <see cref="ICoapEndpoint"/>.
-        /// </summary>
-        /// <param name="format"></param>
-        /// <returns></returns>
-        string ToString(CoapEndpointStringFormat format);
     }
 
     public interface ICoapClientEndpoint : ICoapEndpoint

@@ -95,10 +95,7 @@ namespace CoAPNet.Dtls.Client
             }
         }
 
-        public string ToString(CoapEndpointStringFormat format)
-        {
-            return BaseUri.ToString();
-        }
+        public override string ToString() => $"udp+dtls://{Server}:{Port}";
 
         public void Dispose()
         {
