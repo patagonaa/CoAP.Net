@@ -7,23 +7,11 @@ namespace CoAPNet.Dtls.Server
 {
     public class CoapDtlsServerEndPoint : ICoapEndpoint
     {
-        public bool IsSecure => true;
-
-        public bool IsMulticast => false;
-
-        public Uri BaseUri { get; }
         public IPEndPoint IPEndPoint { get; }
 
         public CoapDtlsServerEndPoint(IPAddress? address = null, int port = Coap.PortDTLS)
         {
-            address = address ?? IPAddress.IPv6Any;
-
-            BaseUri = new UriBuilder()
-            {
-                Scheme = "coaps://",
-                Host = address.ToString(),
-                Port = port
-            }.Uri;
+            address ??= IPAddress.IPv6Any;
 
             IPEndPoint = new IPEndPoint(address, port);
         }
@@ -32,20 +20,15 @@ namespace CoAPNet.Dtls.Server
         {
         }
 
-        public Task<CoapPacket> ReceiveAsync(CancellationToken tokens)
-        {
-            throw new InvalidOperationException("Receiving can only be done via a DTLS session");
-        }
-
         public async Task SendAsync(CoapPacket packet, CancellationToken token)
         {
-            //packet has the CoapDtlsServerClientEndPoint which we have to respond to.
-            await packet.Endpoint.SendAsync(packet, token);
+            //packet has the Session we have to respond to.
+            if (packet.Endpoint is not CoapDtlsSession session)
+                throw new ArgumentException("Can only send DTLS packets");
+
+            await session.SendAsync(packet, token);
         }
 
-        public string ToString(CoapEndpointStringFormat format)
-        {
-            return BaseUri.ToString();
-        }
+        public override string ToString() => $"udp+dtls://{IPEndPoint}";
     }
 }

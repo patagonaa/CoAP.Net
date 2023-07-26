@@ -1,12 +1,12 @@
 ﻿#region License
 // Copyright 2017 Roman Vaughan (NZSmartie)
-//  
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,7 +20,7 @@ using System.Linq;
 using System.Text;
 using CoAPNet.Utils;
 
-namespace CoAPNet
+namespace CoAPNet.Server
 {
     public static class CoreLinkFormat
     {
@@ -115,7 +115,7 @@ namespace CoAPNet
                                     var lang = value.Substring(charset.Length + 1, value.IndexOf('\'', charset.Length + 1) - charset.Length - 1);
                                     value = value.Substring(charset.Length + lang.Length + 3, value.Length - charset.Length - lang.Length - 4);
 
-                                    //System.Diagnostics.Debug.WriteLine("title* = {3}\n\tCharset: {0}\n\tLanguage: {1}\n\tValue: {2}", 
+                                    //System.Diagnostics.Debug.WriteLine("title* = {3}\n\tCharset: {0}\n\tLanguage: {1}\n\tValue: {2}",
                                     //    charset, lang, value, Uri.UnescapeDataString(value));
 
                                     currentResourceMetadata.TitleExt = Uri.UnescapeDataString(value);
@@ -265,7 +265,7 @@ namespace CoAPNet
                 //    value = value.Substring(charset.Length + lang.Length + 3,
                 //        value.Length - charset.Length - lang.Length - 4);
 
-                //    //System.Diagnostics.Debug.WriteLine("title* = {3}\n\tCharset: {0}\n\tLanguage: {1}\n\tValue: {2}", 
+                //    //System.Diagnostics.Debug.WriteLine("title* = {3}\n\tCharset: {0}\n\tLanguage: {1}\n\tValue: {2}",
                 //    //    charset, lang, value, Uri.UnescapeDataString(value));
 
                 //    resource.TitleExt = Uri.UnescapeDataString(value);
@@ -279,7 +279,7 @@ namespace CoAPNet
                 if (resource.MaxSize != 0)
                     message.Append($";sz={resource.MaxSize:D}");
 
-                
+
                 //default:
                 //    if (value.Length == 1)
                 //    {

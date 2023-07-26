@@ -7,7 +7,7 @@ using Org.BouncyCastle.Tls;
 
 namespace CoAPNet.Dtls.Client
 {
-    public class CoapDtlsClientEndPoint : ICoapEndpoint
+    public class CoapDtlsClientEndPoint : ICoapClientEndpoint, ICoapEndpointInfo
     {
         private const int NetworkMtu = 1500;
 
@@ -17,22 +17,12 @@ namespace CoAPNet.Dtls.Client
 
         public CoapDtlsClientEndPoint(string server, int port, TlsClient tlsClient)
         {
-            BaseUri = new UriBuilder()
-            {
-                Scheme = "coaps://",
-                Host = server,
-                Port = port
-            }.Uri;
             Server = server;
             Port = port;
             _tlsClient = tlsClient;
         }
 
-        public bool IsSecure => true;
-
         public bool IsMulticast => false;
-
-        public Uri BaseUri { get; }
         public string Server { get; }
         public int Port { get; }
 
@@ -71,7 +61,8 @@ namespace CoAPNet.Dtls.Client
         public Task SendAsync(CoapPacket packet, CancellationToken token)
         {
             EnsureConnected();
-
+            if (packet.Endpoint != this)
+                throw new InvalidOperationException("Endpoint can only send its own packets");
             if (_datagramTransport == null)
                 throw new InvalidOperationException("Session must be established before sending/receiving any data.");
 
@@ -96,14 +87,16 @@ namespace CoAPNet.Dtls.Client
             }
         }
 
-        public string ToString(CoapEndpointStringFormat format)
-        {
-            return BaseUri.ToString();
-        }
+        public override string ToString() => $"udp+dtls://{Server}:{Port}";
 
         public void Dispose()
         {
             _datagramTransport?.Close();
+        }
+
+        public Task<ICoapEndpointInfo> GetEndpointInfoFromMessage(CoapMessage message)
+        {
+            return Task.FromResult<ICoapEndpointInfo>(this);
         }
     }
 }

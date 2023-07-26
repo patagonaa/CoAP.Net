@@ -40,7 +40,7 @@ namespace CoAPDevices
             try
             {
                 // Listen to all ip address and subscribe to multicast requests.
-                await myServer.BindTo(new CoapUdpEndPoint(Coap.Port) { JoinMulticast = true });
+                await myServer.BindTo(new CoapUdpEndPoint(IPAddress.Any, Coap.Port) { JoinMulticast = true });
 
                 // Start our server.
                 await myServer.StartAsync(myHandler, CancellationToken.None);

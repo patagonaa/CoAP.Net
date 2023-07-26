@@ -1,12 +1,12 @@
 ﻿#region License
 // Copyright 2017 Roman Vaughan (NZSmartie)
-//  
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,7 @@ using System;
 using System.Net;
 using NUnit.Framework;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace CoAPNet.Tests
 {
@@ -211,14 +212,37 @@ namespace CoAPNet.Tests
             get
             {
                 yield return new TestCaseData(
-                        new CoapMessageIdentifier(1234, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapEndpoint() { BaseUri = new Uri("coap://1.2.3.4:1234/") }, true),
-                        new CoapMessageIdentifier(1234, CoapMessageType.Acknowledgement, new byte[] { 1, 2, 3, 4 }, new CoapEndpoint() { BaseUri = new Uri("coap://1.2.3.4:1234/") }, false))
+                        new CoapMessageIdentifier(1234, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapEndpointInfoMock(IPEndPoint.Parse("1.2.3.4:1234")), true),
+                        new CoapMessageIdentifier(1234, CoapMessageType.Acknowledgement, new byte[] { 1, 2, 3, 4 }, new CoapEndpointInfoMock(IPEndPoint.Parse("1.2.3.4:1234")), false))
                     .Returns(true);
 
                 yield return new TestCaseData(
-                        new CoapMessageIdentifier(1234, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapEndpoint() { BaseUri = new Uri("coap://1.2.3.4:1234/") }, true),
-                        new CoapMessageIdentifier(5678, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapEndpoint() { BaseUri = new Uri("coap://1.2.3.4:1234/") }, false))
+                        new CoapMessageIdentifier(1234, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapEndpointInfoMock(IPEndPoint.Parse("1.2.3.4:1234")), true),
+                        new CoapMessageIdentifier(5678, CoapMessageType.Confirmable, new byte[] { 1, 2, 3, 4 }, new CoapEndpointInfoMock(IPEndPoint.Parse("1.2.3.4:1234")), false))
                     .Returns(true);
+            }
+        }
+
+        public class CoapEndpointInfoMock : ICoapEndpointInfo
+        {
+            public CoapEndpointInfoMock(IPEndPoint endPoint, bool isMulticast = false)
+            {
+                EndPoint = endPoint;
+                IsMulticast = isMulticast;
+            }
+            public bool IsMulticast { get; }
+            public IPEndPoint EndPoint { get; }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is CoapEndpointInfoMock mock &&
+                       IsMulticast == mock.IsMulticast &&
+                       EqualityComparer<IPEndPoint>.Default.Equals(EndPoint, mock.EndPoint);
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(IsMulticast, EndPoint);
             }
         }
 

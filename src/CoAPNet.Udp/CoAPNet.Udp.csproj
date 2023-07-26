@@ -32,6 +32,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\CoAPNet.Server\CoAPNet.Server.csproj" />
         <ProjectReference Include="..\CoAPNet\CoAPNet.csproj" />
     </ItemGroup>
 

@@ -14,14 +14,7 @@
 // limitations under the License.
 #endregion
 
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
-namespace CoAPNet
-{
-    public class CoapPacket
-    {
-        public virtual byte[] Payload { get; set; }
-
-        public virtual ICoapEndpointInfo Endpoint { get; set; }
-    }
-}
+// Allow CoAPNet.Tests to access internal members for testing purposes
+[assembly: InternalsVisibleTo("CoAPNet.Udp.Tests")]

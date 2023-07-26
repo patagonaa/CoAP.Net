@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CoAPNet;
+using CoAPNet.Client;
 using CoAPNet.Udp;
 
 namespace CoAPDevices
@@ -12,7 +13,7 @@ namespace CoAPDevices
         static async Task Main(string[] args)
         {
             // Create a new client using a UDP endpoint (defaults to 0.0.0.0 with any available port number)
-            var client = new CoapClient(new CoapUdpEndPoint());
+            var client = new CoapClient(new CoapUdpEndPoint() { IsMulticast = true });
             var cancellationTokenSource = new CancellationTokenSource();
 
             // Capture the Control + C event
@@ -30,7 +31,7 @@ namespace CoAPDevices
             try
             {
                 // Run a Send task and Receive task concurrently
-                await Task.WhenAny(
+                await Task.WhenAll(
                     SendAsync(client, cancellationTokenSource.Token),
                     ReceiveAsync(client, cancellationTokenSource.Token));
             }

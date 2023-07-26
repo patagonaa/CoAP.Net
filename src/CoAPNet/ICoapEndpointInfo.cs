@@ -14,14 +14,14 @@
 // limitations under the License.
 #endregion
 
-using System.Collections.Generic;
 
 namespace CoAPNet
 {
-    public class CoapPacket
+    /// <summary>
+    /// The information the endpoint needs to send/respond to a specific remote
+    /// </summary>
+    public interface ICoapEndpointInfo
     {
-        public virtual byte[] Payload { get; set; }
-
-        public virtual ICoapEndpointInfo Endpoint { get; set; }
+        bool IsMulticast { get; }
     }
 }

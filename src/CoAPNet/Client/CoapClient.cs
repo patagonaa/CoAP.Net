@@ -1,12 +1,12 @@
 ﻿#region License
 // Copyright 2017 Roman Vaughan (NZSmartie)
-//  
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 using CoAPNet;
 using CoAPNet.Utils;
 
-namespace CoAPNet
+namespace CoAPNet.Client
 {
     /// <summary>
     /// Represents CoAP specific errors that occur during calls inside of <see cref="CoapClient"/>.
@@ -35,27 +35,27 @@ namespace CoAPNet
     public class CoapClientException : CoapException
     {
         /// <inheritdoc/>
-        public CoapClientException() 
+        public CoapClientException()
             : base()
         { }
 
         /// <inheritdoc/>
-        public CoapClientException(string message) 
+        public CoapClientException(string message)
             : base(message)
         { }
 
         /// <inheritdoc/>
-        public CoapClientException(string message, Exception innerException) 
+        public CoapClientException(string message, Exception innerException)
             : base(message, innerException)
         { }
 
         /// <inheritdoc/>
-        public CoapClientException(string message, CoapMessageCode responseCode) 
+        public CoapClientException(string message, CoapMessageCode responseCode)
             : base(message, responseCode)
         { }
 
         /// <inheritdoc/>
-        public CoapClientException(string message, Exception innerException, CoapMessageCode responseCode) 
+        public CoapClientException(string message, Exception innerException, CoapMessageCode responseCode)
             : base(message, innerException, responseCode)
         { }
     }
@@ -68,11 +68,11 @@ namespace CoAPNet
         /// <summary>
         /// The endpoint which this client is bound to, and performs Send/Receive through.
         /// </summary>
-        public ICoapEndpoint Endpoint { get; private set; }
+        public ICoapClientEndpoint Endpoint { get; private set; }
 
         private int _messageId;
 
-        private readonly Queue<Tuple<DateTime, ICoapEndpoint, CoapMessage>> _recentMessages = new Queue<Tuple<DateTime, ICoapEndpoint, CoapMessage>>();
+        private readonly Queue<Tuple<DateTime, ICoapEndpointInfo, CoapMessage>> _recentMessages = new Queue<Tuple<DateTime, ICoapEndpointInfo, CoapMessage>>();
 
         // TODO: Test this default value. would only a few seconds be enough?
         /// <summary>
@@ -82,7 +82,7 @@ namespace CoAPNet
         public TimeSpan MessageCacheTimeSpan { get; set; } = TimeSpan.FromMinutes(1);
 
         // I'm not particularly fond of the following _messageQueue and _messageResponses... Feels more like a hack. but it works? NEEDS MORE TESTING!!!
-        private readonly ConcurrentDictionary<CoapMessageIdentifier, TaskCompletionSource<CoapMessage>> _messageResponses 
+        private readonly ConcurrentDictionary<CoapMessageIdentifier, TaskCompletionSource<CoapMessage>> _messageResponses
             = new ConcurrentDictionary<CoapMessageIdentifier, TaskCompletionSource<CoapMessage>>();
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace CoAPNet
         /// </summary>
         /// <param name="endpoint">The local CoAP endpoint to bind to and perform Send/Receive operations on.</param>
         /// <exception cref="ArgumentNullException">When <paramref name="endpoint"/> is <c>null</c></exception>
-        public CoapClient(ICoapEndpoint endpoint)
+        public CoapClient(ICoapClientEndpoint endpoint)
         {
             Endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
 
@@ -154,7 +154,7 @@ namespace CoAPNet
             }
             if (resultTask != null)
                 return await resultTask;
-            
+
             if (Endpoint == null)
                 throw new CoapEndpointException($"{nameof(CoapClient)} does not have a valid endpoint");
 
@@ -163,11 +163,11 @@ namespace CoAPNet
             do
             {
                 token.ThrowIfCancellationRequested();
-                    
+
                 await _receiveEvent.WaitAsync(token);
 
             } while (!_receiveQueue.TryDequeue(out resultTask));
-            
+
             // Task sould already be in the completed,cancelled or error'd state.
             return await resultTask;
         }
@@ -265,7 +265,7 @@ namespace CoAPNet
                 {
                     var endpoint = Endpoint;
                     Endpoint = null;
-                    
+
                     endpoint?.Dispose();
 
                     foreach (var response in _messageResponses.Values)
@@ -280,7 +280,7 @@ namespace CoAPNet
             }
         }
 
-        private bool IsRepeated(ICoapEndpoint endpoint, int messageId)
+        private bool IsRepeated(ICoapEndpointInfo endpoint, int messageId)
         {
             var clearBefore = DateTime.Now.Subtract(MessageCacheTimeSpan);
 
@@ -289,7 +289,7 @@ namespace CoAPNet
                 // Clear out expired messageIds
                 while (_recentMessages.Count > 0)
                 {
-                    if(_recentMessages.Peek().Item1 >= clearBefore)
+                    if (_recentMessages.Peek().Item1 >= clearBefore)
                         break;
                     _recentMessages.Dequeue();
                 }
@@ -324,14 +324,14 @@ namespace CoAPNet
         }
 
         /// <summary>
-        /// Checks if a <see cref="CoapReceiveResult"/> has been received for the coresponding <paramref name="request"/> and returns it. 
+        /// Checks if a <see cref="CoapReceiveResult"/> has been received for the coresponding <paramref name="request"/> and returns it.
         /// Otherwise waits until a new result is received unless cancelled by the <paramref name="token"/> or the <see cref="MaxRetransmitAttempts"/> is reached.
         /// </summary>
         /// <param name="request">Waits for a result with a coresponding request message.</param>
         /// <param name="token">Token to cancel the blocking Receive operation</param>
         /// <returns>Valid result if a result is received, <c>null</c> if canceled.</returns>
         /// <exception cref="CoapClientException">If the timeout period * maximum retransmission attempts was reached.</exception>
-        public Task<CoapMessage> GetResponseAsync(CoapMessage request, ICoapEndpoint endpoint = null, bool isRequest = false, CancellationToken token = default(CancellationToken), bool dequeue = true)
+        public Task<CoapMessage> GetResponseAsync(CoapMessage request, ICoapEndpointInfo endpoint = null, bool isRequest = false, CancellationToken token = default, bool dequeue = true)
             => GetResponseAsync(request.GetIdentifier(endpoint, isRequest), token, dequeue);
 
 
@@ -343,14 +343,14 @@ namespace CoAPNet
         /// <returns>Valid result if a result is received, <c>null</c> if canceled.</returns>
         /// <exception cref="CoapClientException">If the timeout period * maximum retransmission attempts was reached.</exception>
         [Obsolete("In favor of GetResponseAsync(CoapMessage request, ...)")]
-        public Task<CoapMessage> GetResponseAsync(int messageId, CancellationToken token = default(CancellationToken), bool dequeue = true)
+        public Task<CoapMessage> GetResponseAsync(int messageId, CancellationToken token = default, bool dequeue = true)
         {
             // Assume message was Confirmable
             return GetResponseAsync(new CoapMessageIdentifier(messageId, CoapMessageType.Confirmable), token, dequeue);
         }
 
         // TODO: Ignore Acks, we're actually interested in a response.
-        public async Task<CoapMessage> GetResponseAsync(CoapMessageIdentifier messageId, CancellationToken token = default(CancellationToken), bool dequeue = true)
+        public async Task<CoapMessage> GetResponseAsync(CoapMessageIdentifier messageId, CancellationToken token = default, bool dequeue = true)
         {
             TaskCompletionSource<CoapMessage> responseTask = null;
 
@@ -358,7 +358,7 @@ namespace CoAPNet
                 throw new CoapClientException($"The current message id ({messageId}) is not pending a due response");
 
             if (responseTask.Task.IsCompleted)
-                lock(_recentMessages)
+                lock (_recentMessages)
                     return _recentMessages.FirstOrDefault(m => m.Item3.GetIdentifier() == messageId)?.Item3
                         ?? throw new CoapClientException($"No recent message found for {messageId}. This may happen when {nameof(MessageCacheTimeSpan)} is too short");
 
@@ -393,7 +393,7 @@ namespace CoAPNet
         /// </summary>
         /// <param name="message"></param>
         /// <returns></returns>
-        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message) 
+        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message)
             => await SendAsync(message, null, CancellationToken.None);
 
         /// <summary>
@@ -402,7 +402,7 @@ namespace CoAPNet
         /// <param name="message"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message, CancellationToken token) 
+        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message, CancellationToken token)
             => await SendAsync(message, null, token);
 
         /// <summary>
@@ -411,14 +411,14 @@ namespace CoAPNet
         /// <param name="message"></param>
         /// <param name="endpoint"></param>
         /// <returns></returns>
-        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message, ICoapEndpoint endpoint) 
+        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message, ICoapEndpointInfo endpoint)
             => await SendAsync(message, endpoint, CancellationToken.None);
 
-        private int GetNextMessageId() 
+        private int GetNextMessageId()
             => Interlocked.Increment(ref _messageId) & ushort.MaxValue;
 
         /// <summary>
-        /// Assigns an incremented message id (if none is already set) and performs a blocking Send operation. 
+        /// Assigns an incremented message id (if none is already set) and performs a blocking Send operation.
         /// <para>If the mssage is <see cref="CoapMessageType.Confirmable"/>, the client will wait for a response with a coresponding message Id for the <see cref="RetransmitTimeout"/>* * <see cref="MaxRetransmitAttempts"/></para>
         /// </summary>
         /// <param name="message">The CoAP message to send. It's <see cref="CoapMessage.Id"/> may be set if it is unassigned.</param>
@@ -428,7 +428,7 @@ namespace CoAPNet
         /// <param name="token">A token used to cancel the blocking Send operation or retransmission attempts.</param>
         /// <returns>The message Id</returns>
         /// <exception cref="CoapClientException">If the timeout period * maximum retransmission attempts was reached.</exception>
-        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message, ICoapEndpoint endpoint, CancellationToken token)
+        public virtual async Task<CoapMessageIdentifier> SendAsync(CoapMessage message, ICoapEndpointInfo endpoint, CancellationToken token)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
@@ -474,38 +474,39 @@ namespace CoAPNet
             throw new CoapClientException($"Max retransmission attempts reached for Message Id: {message.Id}");
         }
 
-        private async Task SendAsyncInternal(CoapMessage message, ICoapEndpoint remoteEndpoint, CancellationToken token)
+        private async Task SendAsyncInternal(CoapMessage message, ICoapEndpointInfo remoteEndpoint, CancellationToken token)
         {
-            if (remoteEndpoint == null)
-                remoteEndpoint = new CoapEndpoint
-                {
-                    BaseUri = new UriBuilder(message.GetUri()) { Path = "/", Fragment = "", Query = "" }.Uri,
-                    IsMulticast = message.IsMulticast,
-                };
-            else if (message.IsMulticast && !remoteEndpoint.IsMulticast)
-                throw new CoapClientException("Can not send CoAP multicast message to a non-multicast endpoint");
+            var endpoint = Endpoint;
+            if (endpoint == null)
+                return;
 
-            Task task;
-            lock (this)
+            // this is an artificial limitation.
+            // in ReceiveAsyncInternal we need to know if the request was sent via multicast and right now, there is no way to pass information between request and response.
+            if (message.IsMulticast != Endpoint.IsMulticast)
+                throw new CoapClientException("Can not send CoAP multicast message to a non-multicast endpoint and vice-versa");
+
+            if (remoteEndpoint == null)
             {
-                task = (Endpoint == null)
-                    ? Task.CompletedTask
-                    : Endpoint.SendAsync(new CoapPacket
-                    {
-                        Payload = message.ToBytes(),
-                        Endpoint = remoteEndpoint
-                    }, token);
+                remoteEndpoint = await endpoint.GetEndpointInfoFromMessage(message);
+            }
+            if (message.IsMulticast != remoteEndpoint.IsMulticast)
+            {
+                throw new CoapClientException("Can not send CoAP multicast message to a non-multicast endpoint and vice-versa");
             }
 
-            await task.ConfigureAwait(false);
+            await endpoint.SendAsync(new CoapPacket
+            {
+                Payload = message.ToBytes(),
+                Endpoint = remoteEndpoint
+            }, token);
         }
 
         internal void SetNextMessageId(int value)
         {
             Interlocked.Exchange(ref _messageId, value - 1);
         }
-        
-#region Request Operations
+
+        #region Request Operations
 
         /// <summary>
         /// Performs a async <see cref="CoapMessageCode.Get"/> request to the <paramref name="uri"/>.
@@ -513,7 +514,7 @@ namespace CoAPNet
         /// <param name="uri"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        public virtual async Task<CoapMessageIdentifier> GetAsync(string uri, CancellationToken token = default(CancellationToken))
+        public virtual async Task<CoapMessageIdentifier> GetAsync(string uri, CancellationToken token = default)
         {
             return await GetAsync(uri, null, token);
         }
@@ -525,7 +526,7 @@ namespace CoAPNet
         /// <param name="endpoint"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        public virtual async Task<CoapMessageIdentifier> GetAsync(string uri, ICoapEndpoint endpoint, CancellationToken token = default(CancellationToken))
+        public virtual async Task<CoapMessageIdentifier> GetAsync(string uri, ICoapEndpointInfo endpoint, CancellationToken token = default)
         {
             var message = new CoapMessage
             {
@@ -580,7 +581,7 @@ namespace CoAPNet
             throw new NotImplementedException();
         }
 
-#endregion
+        #endregion
 
 
     }
@@ -595,7 +596,7 @@ namespace CoAPNet
         /// </summary>
         /// <param name="endpoint"></param>
         /// <param name="message"></param>
-        public CoapReceiveResult(ICoapEndpoint endpoint, CoapMessage message)
+        public CoapReceiveResult(ICoapEndpointInfo endpoint, CoapMessage message)
         {
             Endpoint = endpoint;
 
@@ -605,7 +606,7 @@ namespace CoAPNet
         /// <summary>
         /// Gets which <see cref="ICoapEndpoint"/> the <see cref="Message"/> was received from.
         /// </summary>
-        public ICoapEndpoint Endpoint { get; }
+        public ICoapEndpointInfo Endpoint { get; }
 
         /// <summary>
         /// The <see cref="CoapMessage"/> that was received from <see cref="Endpoint"/>.

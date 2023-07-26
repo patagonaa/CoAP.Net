@@ -14,14 +14,17 @@
 // limitations under the License.
 #endregion
 
-using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace CoAPNet
+namespace CoAPNet.Server
 {
-    public class CoapPacket
-    {
-        public virtual byte[] Payload { get; set; }
 
-        public virtual ICoapEndpointInfo Endpoint { get; set; }
+    public interface ICoapTransport
+    {
+        Task BindAsync();
+
+        Task UnbindAsync();
+
+        Task StopAsync();
     }
 }

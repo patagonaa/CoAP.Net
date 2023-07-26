@@ -41,7 +41,6 @@ namespace CoAPNet.Tests
         public void Setup()
         {
             _endpoint = new Mock<ICoapEndpoint>();
-            _endpoint.Setup(e => e.BaseUri).Returns(_baseUri);
             _endpoint.Setup(e => e.SendAsync(It.IsAny<CoapPacket>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(0));
         }
 

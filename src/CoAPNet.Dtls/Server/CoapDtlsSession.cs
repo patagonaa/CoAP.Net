@@ -8,7 +8,7 @@ using Org.BouncyCastle.Tls;
 
 namespace CoAPNet.Dtls.Server
 {
-    internal class CoapDtlsServerClientEndPoint : ICoapEndpoint, IDtlsSession
+    internal class CoapDtlsSession : ICoapIpEndpointInfo, IDtlsSession
     {
         private readonly QueueDatagramTransport _udpTransport;
         private readonly CancellationToken _cancelToken;
@@ -20,19 +20,13 @@ namespace CoAPNet.Dtls.Server
         private SemaphoreSlim? _packetsReceivedSemaphore;
         private DtlsTransport? _dtlsTransport;
 
-        public CoapDtlsServerClientEndPoint(
+        public CoapDtlsSession(
             IPEndPoint endPoint,
             int networkMtu,
             Action<UdpSendPacket> sendAction,
             DateTime sessionStartTime)
         {
             EndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
-            BaseUri = new UriBuilder()
-            {
-                Scheme = "coaps://",
-                Host = endPoint.Address.ToString(),
-                Port = endPoint.Port
-            }.Uri;
 
             _udpTransport = new QueueDatagramTransport(networkMtu, bytes => sendAction(new UdpSendPacket(bytes, EndPoint)), ep => ProposeNewEndPoint(ep));
             SessionStartTime = sessionStartTime;
@@ -61,11 +55,7 @@ namespace CoAPNet.Dtls.Server
 
         public IPEndPoint EndPoint { get; private set; }
         private IPEndPoint? PendingEndPoint { get; set; }
-
-        public Uri BaseUri { get; }
         public IReadOnlyDictionary<string, object>? ConnectionInfo { get; private set; }
-
-        public bool IsSecure => true;
 
         public bool IsMulticast => false;
 
@@ -155,16 +145,6 @@ namespace CoAPNet.Dtls.Server
             _cancelToken.ThrowIfCancellationRequested();
             _dtlsTransport.Send(packet.Payload, 0, packet.Payload.Length);
             return Task.CompletedTask;
-        }
-
-        public override string ToString()
-        {
-            return ToString(CoapEndpointStringFormat.Simple);
-        }
-
-        public string ToString(CoapEndpointStringFormat format)
-        {
-            return EndPoint.ToString();
         }
 
         public void Accept(DtlsServerProtocol serverProtocol, TlsServer server)
