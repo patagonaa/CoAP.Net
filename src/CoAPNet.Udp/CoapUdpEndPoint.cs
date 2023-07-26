@@ -47,7 +47,7 @@ namespace CoAPNet.Udp
 
         public bool CanReceive => Client?.Client.LocalEndPoint != null;
 
-        public bool IsMulticast { get; }
+        public bool IsMulticast { get; set; }
 
         public bool JoinMulticast { get; set; }
 
@@ -73,7 +73,6 @@ namespace CoAPNet.Udp
         {
             _logger = logger;
             _endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
-            IsMulticast = endpoint.Address.Equals(_multicastAddressIPv4) || _multicastAddressIPv6.Contains(endpoint.Address);
         }
 
         public Task BindAsync()
@@ -229,6 +228,7 @@ namespace CoAPNet.Udp
             else if (uri.HostNameType == UriHostNameType.Dns)
             {
                 // TODO: how do we select the best ip address after looking it up?
+                // This is especially an issue with IPv4 vs. IPv6, especially if only one of both is available on the server
                 address = (await Dns.GetHostAddressesAsync(uri.Host)).FirstOrDefault();
             }
             else

@@ -479,13 +479,19 @@ namespace CoAPNet.Client
             var endpoint = Endpoint;
             if (endpoint == null)
                 return;
+
+            // this is an artificial limitation.
+            // in ReceiveAsyncInternal we need to know if the request was sent via multicast and right now, there is no way to pass information between request and response.
+            if (message.IsMulticast != Endpoint.IsMulticast)
+                throw new CoapClientException("Can not send CoAP multicast message to a non-multicast endpoint and vice-versa");
+
             if (remoteEndpoint == null)
             {
                 remoteEndpoint = await endpoint.GetEndpointInfoFromMessage(message);
             }
-            if (message.IsMulticast && !remoteEndpoint.IsMulticast)
+            if (message.IsMulticast != remoteEndpoint.IsMulticast)
             {
-                throw new CoapClientException("Can not send CoAP multicast message to a non-multicast endpoint");
+                throw new CoapClientException("Can not send CoAP multicast message to a non-multicast endpoint and vice-versa");
             }
 
             await endpoint.SendAsync(new CoapPacket

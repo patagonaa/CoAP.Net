@@ -605,7 +605,7 @@ namespace CoAPNet.Tests
         {
             // Arrange
             var mockClientEndpoint = new Mock<MockEndpoint> { CallBase = true };
-
+            mockClientEndpoint.SetupGet(x => x.IsMulticast).Returns(true);
             mockClientEndpoint
                 // Ensure a multicast placeholder endpoint is used.
                 .Setup(e => e.SendAsync(It.Is<CoapPacket>(p => p.Endpoint is CoapEndpointInfoMock && p.Endpoint.IsMulticast == true), It.IsAny<CancellationToken>()))
@@ -643,6 +643,7 @@ namespace CoAPNet.Tests
         {
             // Arrange
             var mockClientEndpoint = new Mock<MockEndpoint> { CallBase = true };
+            mockClientEndpoint.SetupGet(x => x.IsMulticast).Returns(true);
             mockClientEndpoint
                 .Setup(e => e.SendAsync(It.IsAny<CoapPacket>(), It.IsAny<CancellationToken>()))
                 .CallBase()

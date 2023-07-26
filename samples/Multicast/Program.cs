@@ -13,7 +13,7 @@ namespace CoAPDevices
         static async Task Main(string[] args)
         {
             // Create a new client using a UDP endpoint (defaults to 0.0.0.0 with any available port number)
-            var client = new CoapClient(new CoapUdpEndPoint());
+            var client = new CoapClient(new CoapUdpEndPoint() { IsMulticast = true });
             var cancellationTokenSource = new CancellationTokenSource();
 
             // Capture the Control + C event

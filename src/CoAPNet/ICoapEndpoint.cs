@@ -68,7 +68,7 @@ namespace CoAPNet
     public interface ICoapClientEndpoint : ICoapEndpoint
     {
         /// <summary>
-        /// Gets if this endpoint used for Multicast.
+        /// Gets if this endpoint is used to send Multicasts.
         /// </summary>
         /// <remarks>
         /// Multicast endpoints do not acknolwedge received confirmables.

@@ -39,7 +39,7 @@ namespace CoAPDevices
                 };
 
                 // Get the /hello resource from localhost.
-                message.SetUri("coap://localhost/hello");
+                message.SetUri("coap://127.0.0.1/hello");
 
                 Console.WriteLine($"Sending a {message.Code} {message.GetUri().GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped)} request");
                 await client.SendAsync(message, cancellationTokenSource.Token);
