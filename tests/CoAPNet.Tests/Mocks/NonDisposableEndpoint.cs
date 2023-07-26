@@ -27,7 +27,6 @@ namespace CoAPNet.Tests.Mocks
     public class NonDisposableEndpoint : ICoapEndpoint, ICoapClientEndpoint
     {
         public virtual bool IsMulticast { get; } = false;
-        public virtual Uri BaseUri { get; } = new Uri("coap://localhost/");
 
         public void Dispose()
         { }

@@ -57,11 +57,6 @@ namespace CoAPNet
     public interface ICoapEndpoint : IDisposable
     {
         /// <summary>
-        /// Gets the base URI (excluding path and query) for this endpoint.
-        /// </summary>
-        Uri BaseUri { get; }
-
-        /// <summary>
         /// Called by CoapClient/CoapHandler to send a <see cref="CoapPacket.Payload"/> to the specified <see cref="CoapPacket.Endpoint"/> using this endpoint
         /// </summary>
         /// <param name="packet"></param>

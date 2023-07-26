@@ -45,8 +45,6 @@ namespace CoAPNet.Udp
 
         internal bool Bindable { get; set; } = true;
 
-        public Uri BaseUri { get; }
-
         public bool CanReceive => Client?.Client.LocalEndPoint != null;
 
         public bool IsMulticast { get; }
@@ -76,13 +74,6 @@ namespace CoAPNet.Udp
             _logger = logger;
             _endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
             IsMulticast = endpoint.Address.Equals(_multicastAddressIPv4) || _multicastAddressIPv6.Contains(endpoint.Address);
-
-            BaseUri = new UriBuilder()
-            {
-                Scheme = "coap://",
-                Host = _endpoint.Address.ToString(),
-                Port = _endpoint.Port != Coap.Port ? _endpoint.Port : -1
-            }.Uri;
         }
 
         public Task BindAsync()

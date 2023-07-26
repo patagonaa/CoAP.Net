@@ -17,20 +17,12 @@ namespace CoAPNet.Dtls.Client
 
         public CoapDtlsClientEndPoint(string server, int port, TlsClient tlsClient)
         {
-            BaseUri = new UriBuilder()
-            {
-                Scheme = "coaps://",
-                Host = server,
-                Port = port
-            }.Uri;
             Server = server;
             Port = port;
             _tlsClient = tlsClient;
         }
 
         public bool IsMulticast => false;
-
-        public Uri BaseUri { get; }
         public string Server { get; }
         public int Port { get; }
 
