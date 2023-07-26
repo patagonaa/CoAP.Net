@@ -180,7 +180,7 @@ namespace CoAPNet.Udp
             {
                 try
                 {
-                    await Task.WhenAny(Client.SendAsync(packet.Payload, packet.Payload.Length, udpDestination.IPEndPoint), tcs.Task);
+                    await Task.WhenAny(Client.SendAsync(packet.Payload, packet.Payload.Length, udpDestination.EndPoint), tcs.Task);
                     if (token.IsCancellationRequested)
                         Client.Dispose(); // Since UdpClient doesn't provide a mechanism for cancelling an async task. the safest way is to dispose the whole object
                 }
@@ -268,25 +268,25 @@ namespace CoAPNet.Udp
             return new CoapUdpEndpointInfo(new IPEndPoint(address, port));
         }
 
-        internal class CoapUdpEndpointInfo : ICoapEndpointInfo
+        internal class CoapUdpEndpointInfo : ICoapIpEndpointInfo
         {
-            public IPEndPoint IPEndPoint { get; }
+            public IPEndPoint EndPoint { get; }
             public bool IsMulticast { get; }
 
             public CoapUdpEndpointInfo(IPEndPoint ipEndPoint)
             {
-                IPEndPoint = ipEndPoint ?? throw new ArgumentNullException(nameof(ipEndPoint));
+                EndPoint = ipEndPoint ?? throw new ArgumentNullException(nameof(ipEndPoint));
                 IsMulticast = ipEndPoint.Address.Equals(_multicastAddressIPv4) || _multicastAddressIPv6.Contains(ipEndPoint.Address);
             }
 
             public override bool Equals(object obj)
             {
-                return obj is CoapUdpEndpointInfo info && IPEndPoint.Equals(info.IPEndPoint);
+                return obj is CoapUdpEndpointInfo info && EndPoint.Equals(info.EndPoint);
             }
 
             public override int GetHashCode()
             {
-                return IPEndPoint.GetHashCode();
+                return EndPoint.GetHashCode();
             }
         }
     }

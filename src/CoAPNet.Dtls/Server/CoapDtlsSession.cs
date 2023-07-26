@@ -8,7 +8,7 @@ using Org.BouncyCastle.Tls;
 
 namespace CoAPNet.Dtls.Server
 {
-    internal class CoapDtlsSession : ICoapEndpointInfo, IDtlsSession
+    internal class CoapDtlsSession : ICoapIpEndpointInfo, IDtlsSession
     {
         private readonly QueueDatagramTransport _udpTransport;
         private readonly CancellationToken _cancelToken;
