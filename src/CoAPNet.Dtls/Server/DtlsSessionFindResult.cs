@@ -2,10 +2,8 @@
 {
     internal enum DtlsSessionFindResult
     {
-        NewSession,
-        UnknownCid,
+        NotFound,
         FoundByEndPoint,
         FoundByConnectionId,
-        Invalid
     }
 }

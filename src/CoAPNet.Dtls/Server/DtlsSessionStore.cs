@@ -43,24 +43,20 @@ namespace CoAPNet.Dtls.Server
                 }
 
                 session = null;
-                return DtlsSessionFindResult.UnknownCid;
+                return DtlsSessionFindResult.NotFound;
             }
 
             if (_sessionsByEp.TryGetValue(endPoint, out var sessionByEp))
             {
                 if (sessionByEp.ConnectionId != null)
-                {
-                    _logger.LogError("Session has acquired a connection id after it was accepted. Discarding packet.");
-                    session = null;
-                    return DtlsSessionFindResult.Invalid;
-                }
+                    throw new InvalidOperationException("Session has acquired a connection id after it was accepted. Discarding packet.");
 
                 session = sessionByEp;
                 return DtlsSessionFindResult.FoundByEndPoint;
             }
 
             session = null;
-            return DtlsSessionFindResult.NewSession;
+            return DtlsSessionFindResult.NotFound;
         }
 
         public void Add(TSession session)
