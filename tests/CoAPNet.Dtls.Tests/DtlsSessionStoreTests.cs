@@ -24,8 +24,8 @@ namespace CoAPNet.Dtls.Tests
             Assert.AreEqual(DtlsSessionFindResult.NotFound, sessionStore.TryFindSession(Ep1, Cid1, out _));
         }
 
-        [Test]
-        public void TryFind_Cid_WithEstablishingCid_FoundByEp()
+        [Test(Description = "packet with cid from session endpoint, establishing session")]
+        public void TryFind_Cid_EstablishingSession_FoundByEp()
         {
             var sessionStore = GetSut();
             var session = new TestSession(Ep1);
@@ -33,8 +33,17 @@ namespace CoAPNet.Dtls.Tests
             Assert.AreEqual(DtlsSessionFindResult.FoundByEndPoint, sessionStore.TryFindSession(Ep1, Cid1, out _));
         }
 
-        [Test]
-        public void TryFind_NoCid_WithEstablishedCid_NotFound()
+        [Test(Description = "packet without cid from session endpoint, establishing session")]
+        public void TryFind_NoCid_EstablishingSession_FoundByEp()
+        {
+            var sessionStore = GetSut();
+            var session = new TestSession(Ep1);
+            sessionStore.Add(session);
+            Assert.AreEqual(DtlsSessionFindResult.FoundByEndPoint, sessionStore.TryFindSession(Ep1, null, out _));
+        }
+
+        [Test(Description = "packet without cid from session endpoint, session with cid")]
+        public void TryFind_NoCid_SessionWithCid_NotFound()
         {
             var sessionStore = GetSut();
             var session = new TestSession(Ep1);
@@ -44,8 +53,8 @@ namespace CoAPNet.Dtls.Tests
             Assert.AreEqual(DtlsSessionFindResult.NotFound, sessionStore.TryFindSession(Ep1, null, out _));
         }
 
-        [Test]
-        public void TryFind_Cid_WithEstablishedCid_FoundByCid()
+        [Test(Description = "packet with cid from different endpoint, session with cid")]
+        public void TryFind_Cid_SessionWithCid_FoundByCid()
         {
             var sessionStore = GetSut();
             var session = new TestSession(Ep1);
@@ -420,7 +429,7 @@ namespace CoAPNet.Dtls.Tests
             session1.ConnectionId = Cid1;
             sessionStore.NotifySessionAccepted(session1);
 
-            // new session with same endpoint
+            // add and accept new session with same endpoint
             Assert.AreEqual(DtlsSessionFindResult.NotFound, sessionStore.TryFindSession(Ep1, null, out _), "new endpoint => new session");
             var session2 = new TestSession(Ep1);
             sessionStore.Add(session2);
