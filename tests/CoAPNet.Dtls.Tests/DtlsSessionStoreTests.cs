@@ -65,6 +65,22 @@ namespace CoAPNet.Dtls.Tests
             Assert.AreEqual(DtlsSessionFindResult.FoundByConnectionId, sessionStore.TryFindSession(Ep2, Cid1, out _));
         }
 
+        [Test(Description = "one session with cid (found by cid), one establishing session (found by ep)")]
+        public void TryFind_Cid_SessionWithCid_EstablishingSession()
+        {
+            var sessionStore = GetSut();
+            var session1 = new TestSession(Ep1);
+            sessionStore.Add(session1);
+            session1.ConnectionId = Cid1;
+            sessionStore.NotifySessionAccepted(session1);
+
+            var session2 = new TestSession(Ep1);
+            sessionStore.Add(session2);
+
+            Assert.AreEqual(DtlsSessionFindResult.FoundByConnectionId, sessionStore.TryFindSession(Ep1, Cid1, out _));
+            Assert.AreEqual(DtlsSessionFindResult.FoundByEndPoint, sessionStore.TryFindSession(Ep1, null, out _));
+        }
+
         [Test]
         public void Add_ConflictingEstablishingSession_Throws()
         {
@@ -442,6 +458,33 @@ namespace CoAPNet.Dtls.Tests
 
             Assert.AreEqual(DtlsSessionFindResult.FoundByConnectionId, sessionStore.TryFindSession(Ep2, Cid2, out var foundByCid2));
             Assert.AreEqual(session2, foundByCid2);
+        }
+
+        [Test(Description =
+            "Usually improbable case, where a retransmitted/replayed ClientHello creates a second session after the first one has been established, " +
+            "in which case packets with a connection id should still reach the first session as to not disrupt the session.")]
+        public void FullRun_EndpointReused_SessionWithCid_BothSessionsReachableDuringAccepting()
+        {
+            var sessionStore = GetSut();
+
+            // add and accept new session with cid
+            Assert.AreEqual(DtlsSessionFindResult.NotFound, sessionStore.TryFindSession(Ep1, null, out _), "new endpoint => new session");
+            var session1 = new TestSession(Ep1);
+            sessionStore.Add(session1);
+            session1.ConnectionId = Cid1;
+            sessionStore.NotifySessionAccepted(session1);
+
+            // add (but don't accept) new session with same endpoint
+            Assert.AreEqual(DtlsSessionFindResult.NotFound, sessionStore.TryFindSession(Ep1, null, out _), "new endpoint => new session");
+            var session2 = new TestSession(Ep1);
+            sessionStore.Add(session2);
+
+            // both sessions can be found (session 1 by cid, establishing session 2 by ep)
+            Assert.AreEqual(DtlsSessionFindResult.FoundByConnectionId, sessionStore.TryFindSession(Ep1, Cid1, out var foundByCid));
+            Assert.AreEqual(session1, foundByCid);
+
+            Assert.AreEqual(DtlsSessionFindResult.FoundByEndPoint, sessionStore.TryFindSession(Ep1, null, out var foundByEp));
+            Assert.AreEqual(session2, foundByEp);
         }
 
         // these are properties so we get a new instance each time to check for proper equality check (instead of == which doesn't work here)
