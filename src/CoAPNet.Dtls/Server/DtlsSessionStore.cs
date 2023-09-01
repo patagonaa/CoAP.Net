@@ -26,6 +26,27 @@ namespace CoAPNet.Dtls.Server
 
         public DtlsSessionFindResult TryFindSession(IPEndPoint endPoint, byte[]? cid, out TSession? session)
         {
+            if (cid != null)
+            {
+                if (_sessionsByCid.TryGetValue(cid, out var sessionByCid))
+                {
+                    session = sessionByCid;
+                    return DtlsSessionFindResult.FoundByConnectionId;
+                }
+            }
+            else
+            {
+                if (_sessionsByEp.TryGetValue(endPoint, out var sessionByEp))
+                {
+                    if (sessionByEp.ConnectionId != null)
+                        throw new InvalidOperationException("Session has acquired a connection id after it was accepted. Discarding packet.");
+
+                    session = sessionByEp;
+                    return DtlsSessionFindResult.FoundByEndPoint;
+                }
+            }
+
+            // regardless of whether the packet has a cid or not, we check the accepting sessions.
             // this is required because there may be packets with a cid before we have been notified of the cid by the session.
             // once the session is accepted, we just search by cid / endpoint (depending on whether the packet or session use cid or not)
             if (_acceptingSessionsByEp.TryGetValue(endPoint, out var cidSessionByEp))
@@ -34,33 +55,8 @@ namespace CoAPNet.Dtls.Server
                 return DtlsSessionFindResult.FoundByEndPoint;
             }
 
-            if (cid != null)
-            {
-                if (_sessionsByCid.TryGetValue(cid, out var sessionByCid))
-                {
-                    session = sessionByCid;
-                    return DtlsSessionFindResult.FoundByConnectionId;
-                }
-
-                session = null;
-                return DtlsSessionFindResult.UnknownCid;
-            }
-
-            if (_sessionsByEp.TryGetValue(endPoint, out var sessionByEp))
-            {
-                if (sessionByEp.ConnectionId != null)
-                {
-                    _logger.LogError("Session has acquired a connection id after it was accepted. Discarding packet.");
-                    session = null;
-                    return DtlsSessionFindResult.Invalid;
-                }
-
-                session = sessionByEp;
-                return DtlsSessionFindResult.FoundByEndPoint;
-            }
-
             session = null;
-            return DtlsSessionFindResult.NewSession;
+            return DtlsSessionFindResult.NotFound;
         }
 
         public void Add(TSession session)
