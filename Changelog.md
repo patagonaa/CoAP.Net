@@ -1,4 +1,8 @@
 # Change Log for CoAP.Net
+
+### v0.16.1
+- [`c792e256`](https://github.com/patagonaa/CoAP.Net/commit/c792e256) fix logic error when stopping that causes wait until timeout, fix error when stopping on netstandard2.0
+
 ### v0.16.0
 - [#11](https://github.com/patagonaa/CoAP.Net/pull/11) Refactoring
 - [#14](https://github.com/patagonaa/CoAP.Net/pull/14) DTLS: fix issue with handshake retransmissions after connection is established
