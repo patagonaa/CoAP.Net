@@ -133,9 +133,14 @@ namespace CoAPNet.Dtls.Server
                         data = await _socket!.ReceiveAsync();
                         _logger.LogDebug("Received DTLS Packet from {EndPoint}", data.RemoteEndPoint);
                     }
+                    catch (ObjectDisposedException)
+                    {
+                        // Happens when the Connection is being closed (netstandard2.0)
+                        continue;
+                    }
                     catch (SocketException sockEx) when (sockEx.SocketErrorCode == SocketError.OperationAborted)
                     {
-                        // Happens when the Connection is being closed
+                        // Happens when the Connection is being closed (net6.0)
                         continue;
                     }
                     catch (SocketException sockEx) when (sockEx.SocketErrorCode == SocketError.ConnectionReset)
@@ -262,9 +267,8 @@ namespace CoAPNet.Dtls.Server
                     Interlocked.Increment(ref _packetsSent);
                     _logger.LogDebug("Sent DTLS Packet to {EndPoint}", toSend.TargetEndPoint);
                 }
-                catch (OperationCanceledException ex)
+                catch (Exception) when (_cts.IsCancellationRequested)
                 {
-                    _logger.LogDebug(ex, "Operation canceled");
                 }
                 catch (Exception ex)
                 {
@@ -432,7 +436,7 @@ namespace CoAPNet.Dtls.Server
             {
                 // wait until close-notifications have been sent and sessions have exited (with timeout)
                 // would be better if there was something to await, but currently we don't save the session tasks and we don't complete the send queue either.
-                while (_sessions.GetCount() == 0 && _sendQueue.Count == 0)
+                while (_sessions.GetCount() != 0 || _sendQueue.Count != 0)
                 {
                     await Task.Delay(100, cancelTimeoutToken);
                 }
