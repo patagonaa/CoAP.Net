@@ -2,17 +2,17 @@
     <PropertyGroup>
         <Version>0.15.0</Version>
         <PackageVersion>0.15.0</PackageVersion>
-        <Authors>Roman Vaughan</Authors>
+        <Authors>Roman Vaughan,patagona</Authors>
         <Company>NZSmartie</Company>
         <Product>CoAPNet</Product>
-        <PackageProjectUrl>https://github.com/NZSmartie/CoAP.Net</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/NZSmartie/CoAP.Net</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/patagonaa/CoAP.Net</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/patagonaa/CoAP.Net</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <IncludeSource>True</IncludeSource>
         <IncludeSymbols>True</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-        <PackageReleaseNotes>See https://github.com/NZSmartie/CoAP.Net/tree/master/Changelog.md</PackageReleaseNotes>
-        <PackageLicenseUrl>https://raw.githubusercontent.com/NZSmartie/CoAP.Net/master/LICENSE</PackageLicenseUrl>
+        <PackageReleaseNotes>See https://github.com/patagonaa/CoAP.Net/tree/master/Changelog.md</PackageReleaseNotes>
+        <PackageLicenseUrl>https://raw.githubusercontent.com/patagonaa/CoAP.Net/master/LICENSE</PackageLicenseUrl>
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <Copyright>Copyright © Roman Vaughan 2017</Copyright>
     </PropertyGroup>

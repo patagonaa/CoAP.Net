@@ -9,8 +9,8 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <PackageId>NZSmartie.$(AssemblyName)</PackageId>
-        <Description>Server and handler implementation for NZSmartie.CoAPNet</Description>
+        <PackageId>patagona.$(AssemblyName)</PackageId>
+        <Description>Server and handler implementation for patagona.CoAPNet</Description>
         <PackageTags>CoAP IoT sensors devices hardware network protocol</PackageTags>
     </PropertyGroup>
 

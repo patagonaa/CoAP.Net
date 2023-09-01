@@ -9,8 +9,8 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <PackageId>NZSmartie.$(AssemblyName)</PackageId>
-        <Description>Provides client/server CoAP protocol support for .Net using arbitary transports.</Description>
+        <PackageId>patagona.$(AssemblyName)</PackageId>
+        <Description>Provides client/server CoAP protocol support for .NET using arbitary transports.</Description>
         <PackageTags>CoAP IoT sensors devices hardware network protocol</PackageTags>
     </PropertyGroup>
 

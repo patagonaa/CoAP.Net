@@ -8,8 +8,8 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <PackageId>NZSmartie.$(AssemblyName)</PackageId>
-        <Description>UDP Socket implementation for NZSmartie.CoAPNet</Description>
+        <PackageId>patagona.$(AssemblyName)</PackageId>
+        <Description>UDP Socket implementation for patagona.CoAPNet</Description>
         <PackageTags>CoAP IoT sensors devices hardware network protocol udp socket</PackageTags>
     </PropertyGroup>
 
