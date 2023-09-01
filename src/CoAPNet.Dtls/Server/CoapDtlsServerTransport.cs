@@ -95,6 +95,17 @@ namespace CoAPNet.Dtls.Server
 
             _socket = new UdpClient(AddressFamily.InterNetworkV6);
             _socket.Client.DualMode = true;
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                // Disable "ConnectionReset" exception when receiving an ICMP "Port unreachable".
+                // Ideally, we would use that to close that session, but .NET doesn't tell us which Endpoint it came from.
+                // We _could_ use a separate ICMP socket and parse the UDP packet ourselves, but this usually only happens while closing a session anyways, so we don't care.
+                // Also, I'm not sure if there's a way to disable this on other OSes, but that exception is ignored anyway, so it's not much of an issue either way.
+                const int SIO_UDP_CONNRESET = -1744830452;
+                byte[] inValue = new byte[] { 0 };
+                byte[] outValue = new byte[] { 0 };
+                _socket.Client.IOControl(SIO_UDP_CONNRESET, inValue, outValue);
+            }
             _socket.Client.Bind(_endPoint.IPEndPoint);
 
             _logger.LogInformation("Bound to Endpoint {IPEndpoint}", _endPoint.IPEndPoint);
@@ -123,17 +134,17 @@ namespace CoAPNet.Dtls.Server
                         // Happens when the Connection is being closed
                         continue;
                     }
-                    catch (SocketException sockEx)
+                    catch (SocketException sockEx) when (sockEx.SocketErrorCode == SocketError.ConnectionReset)
                     {
                         // Some clients send an ICMP Port Unreachable when they receive data after they stopped listening.
-                        // If we knew from which client it came we could get rid of the connection, but we can't, so we just ignore the exception.
-                        if (sockEx.SocketErrorCode == SocketError.ConnectionReset)
-                        {
-                            _logger.LogInformation("Connection Closed by remote host");
-                            continue;
-                        }
+                        // See BindAsync for details.
+                        _logger.LogDebug("Connection Closed by remote host");
+                        continue;
+                    }
+                    catch (SocketException sockEx)
+                    {
                         _logger.LogError("SocketException with SocketErrorCode {SocketErrorCode}", sockEx.SocketErrorCode);
-                        throw;
+                        continue;
                     }
 
                     var cid = GetConnectionId(data.Buffer);
