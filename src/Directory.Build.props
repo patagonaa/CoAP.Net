@@ -1,7 +1,7 @@
 <Project>
     <PropertyGroup>
-        <Version>0.16.1</Version>
-        <PackageVersion>0.16.1</PackageVersion>
+        <Version>0.16.2</Version>
+        <PackageVersion>0.16.2</PackageVersion>
         <Authors>Roman Vaughan,patagona</Authors>
         <Company>NZSmartie</Company>
         <Product>CoAPNet</Product>

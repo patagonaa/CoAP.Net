@@ -1,5 +1,8 @@
 # Change Log for CoAP.Net
 
+### v0.16.2
+- [`7a84d6f5`](https://github.com/patagonaa/CoAP.Net/commit/7a84d6f5) DTLS: fix possible race condition when accepting session while searching for it
+
 ### v0.16.1
 - [`c792e256`](https://github.com/patagonaa/CoAP.Net/commit/c792e256) fix logic error when stopping that causes wait until timeout, fix error when stopping on netstandard2.0
 
