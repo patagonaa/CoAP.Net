@@ -42,8 +42,6 @@ namespace CoAPDevices
                     return;
 
                 Console.WriteLine($"Exception caught: {ex}");
-                Console.WriteLine($"Press <Enter> to exit");
-                Console.Read();
             }
         }
 
