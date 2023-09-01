@@ -26,6 +26,9 @@ namespace CoAPNet.Dtls.Server
 
         public DtlsSessionFindResult TryFindSession(IPEndPoint endPoint, byte[]? cid, out TSession? session)
         {
+            // check for accepting sessions first, otherwise there could be a race condition where NotifySessionAccepted runs after cid/ep check and before accepting check
+            var acceptingSessionFound = _acceptingSessionsByEp.TryGetValue(endPoint, out var acceptingSessionByEp);
+
             if (cid != null)
             {
                 if (_sessionsByCid.TryGetValue(cid, out var sessionByCid))
@@ -49,9 +52,9 @@ namespace CoAPNet.Dtls.Server
             // regardless of whether the packet has a cid or not, we check the accepting sessions.
             // this is required because there may be packets with a cid before we have been notified of the cid by the session.
             // once the session is accepted, we just search by cid / endpoint (depending on whether the packet or session use cid or not)
-            if (_acceptingSessionsByEp.TryGetValue(endPoint, out var cidSessionByEp))
+            if (acceptingSessionFound)
             {
-                session = cidSessionByEp;
+                session = acceptingSessionByEp;
                 return DtlsSessionFindResult.FoundByEndPoint;
             }
 
