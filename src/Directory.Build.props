@@ -13,6 +13,10 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <PackageReleaseNotes>See https://github.com/NZSmartie/CoAP.Net/tree/master/Changelog.md</PackageReleaseNotes>
         <PackageLicenseUrl>https://raw.githubusercontent.com/NZSmartie/CoAP.Net/master/LICENSE</PackageLicenseUrl>
+        <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <Copyright>Copyright © Roman Vaughan 2017</Copyright>
     </PropertyGroup>
+    <ItemGroup>
+        <None Include="..\..\Readme.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 </Project>
