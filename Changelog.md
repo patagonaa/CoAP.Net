@@ -1,4 +1,10 @@
 # Change Log for CoAP.Net
+### v0.16.0
+- [#11](https://github.com/patagonaa/CoAP.Net/pull/11) Refactoring
+- [#14](https://github.com/patagonaa/CoAP.Net/pull/14) DTLS: fix issue with handshake retransmissions after connection is established
+- [`63a84e10`](https://github.com/patagonaa/CoAP.Net/commit/63a84e10) DTLS: disable useless "Connection Reset" exceptions / log messages
+- [`67bbd87`](https://github.com/patagonaa/CoAP.Net/commit/67bbd87) DTLS: improve stop behavior
+
 ### v0.15.0
 - [#8](https://github.com/patagonaa/CoAP.Net/pull/8)
   [#9](https://github.com/patagonaa/CoAP.Net/pull/9)

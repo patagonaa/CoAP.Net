@@ -1,7 +1,7 @@
 <Project>
     <PropertyGroup>
-        <Version>0.15.0</Version>
-        <PackageVersion>0.15.0</PackageVersion>
+        <Version>0.16.0</Version>
+        <PackageVersion>0.16.0</PackageVersion>
         <Authors>Roman Vaughan,patagona</Authors>
         <Company>NZSmartie</Company>
         <Product>CoAPNet</Product>
@@ -12,7 +12,7 @@
         <IncludeSymbols>True</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <PackageReleaseNotes>See https://github.com/patagonaa/CoAP.Net/tree/master/Changelog.md</PackageReleaseNotes>
-        <PackageLicenseUrl>https://raw.githubusercontent.com/patagonaa/CoAP.Net/master/LICENSE</PackageLicenseUrl>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <Copyright>Copyright © Roman Vaughan 2017</Copyright>
     </PropertyGroup>
