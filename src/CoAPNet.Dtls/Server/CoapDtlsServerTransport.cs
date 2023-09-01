@@ -32,6 +32,10 @@ namespace CoAPNet.Dtls.Server
 
         private int? _connectionIdLength;
 
+        private Task? _incomingTask;
+        private Task? _outgoingTask;
+        private Task? _cleanupTask;
+
         #region Stats
         private int _handshakeSuccessCount = 0;
         private int _handshakeTlsErrorCount = 0;
@@ -110,9 +114,9 @@ namespace CoAPNet.Dtls.Server
 
             _logger.LogInformation("Bound to Endpoint {IPEndpoint}", _endPoint.IPEndPoint);
 
-            Task.Factory.StartNew(HandleIncoming, TaskCreationOptions.LongRunning);
-            Task.Factory.StartNew(HandleOutgoing, TaskCreationOptions.LongRunning);
-            Task.Factory.StartNew(HandleCleanup, TaskCreationOptions.LongRunning);
+            _incomingTask = Task.Run(HandleIncoming);
+            _outgoingTask = Task.Run(HandleOutgoing);
+            _cleanupTask = Task.Run(HandleCleanup);
 
             return Task.CompletedTask;
         }
@@ -129,7 +133,7 @@ namespace CoAPNet.Dtls.Server
                         data = await _socket!.ReceiveAsync();
                         _logger.LogDebug("Received DTLS Packet from {EndPoint}", data.RemoteEndPoint);
                     }
-                    catch (ObjectDisposedException)
+                    catch (SocketException sockEx) when (sockEx.SocketErrorCode == SocketError.OperationAborted)
                     {
                         // Happens when the Connection is being closed
                         continue;
@@ -247,12 +251,15 @@ namespace CoAPNet.Dtls.Server
             {
                 try
                 {
-                    if (!_sendQueue.TryTake(out UdpSendPacket? toSend, Timeout.Infinite, _cts.Token))
-                        throw new InvalidOperationException("TryTake returned false");
-
-                    Interlocked.Increment(ref _packetsSent);
+                    if (!_sendQueue.TryTake(out UdpSendPacket? toSend, 1000, _cts.Token))
+                    {
+                        // until we can use something async here (like Channels, which aren't available on netstandard2.0), yield now and then to avoid deadlocking everything
+                        await Task.Yield();
+                        continue;
+                    }
 
                     await _socket!.SendAsync(toSend.Payload, toSend.Payload.Length, toSend.TargetEndPoint);
+                    Interlocked.Increment(ref _packetsSent);
                     _logger.LogDebug("Sent DTLS Packet to {EndPoint}", toSend.TargetEndPoint);
                 }
                 catch (OperationCanceledException ex)
@@ -360,7 +367,9 @@ namespace CoAPNet.Dtls.Server
 
         private async Task HandleCleanup()
         {
-            while (!_cts.IsCancellationRequested)
+            var cancellationToken = _cts.Token;
+
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
@@ -399,18 +408,11 @@ namespace CoAPNet.Dtls.Server
                 {
                     _logger.LogError(ex, "Error while cleaning up sessions");
                 }
-                await Task.Delay(10000);
+                await Task.Delay(10000, cancellationToken);
             }
         }
 
-        public Task UnbindAsync()
-        {
-            _socket?.Close();
-            _socket?.Dispose();
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync()
+        public async Task UnbindAsync()
         {
             foreach (var session in _sessions.GetSessions())
             {
@@ -424,7 +426,51 @@ namespace CoAPNet.Dtls.Server
                 }
             }
 
+            using var cancelTimeoutCts = new CancellationTokenSource(10000);
+            var cancelTimeoutToken = cancelTimeoutCts.Token;
+            try
+            {
+                // wait until close-notifications have been sent and sessions have exited (with timeout)
+                // would be better if there was something to await, but currently we don't save the session tasks and we don't complete the send queue either.
+                while (_sessions.GetCount() == 0 && _sendQueue.Count == 0)
+                {
+                    await Task.Delay(100, cancelTimeoutToken);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Timeout waiting for all sessions to close. Continuing.");
+            }
+
             _cts.Cancel();
+            _socket?.Close(); // close socket to send cancellation notification because we can't cancel ReceiveAsync and SendAsync in netstandard2.0
+
+            // we could use Task.WhenAll here, but that makes it harder to handle exceptions (all but the first exception are swallowed)
+            foreach (var task in new[] { _incomingTask, _outgoingTask, _cleanupTask })
+            {
+                if (task == null)
+                    continue;
+                try
+                {
+                    await task;
+                }
+                catch (OperationCanceledException)
+                {
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error while stopping Tasks");
+                }
+            }
+
+            _socket?.Dispose();
+            _cts.Dispose();
+            _sendQueue.Dispose();
+        }
+
+        public Task StopAsync()
+        {
+            // there is not really a reason to have seperate StopAsync and UnbindAsync, so we do all cleanup in UnbindAsync
             return Task.CompletedTask;
         }
     }
