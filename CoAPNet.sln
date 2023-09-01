@@ -24,6 +24,9 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CoAPNet.Server", "src\CoAPNet.Server\CoAPNet.Server.csproj", "{0484D42B-8BC9-42E4-9C70-DB505779F1E0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{52B2CE1E-A7E7-4680-A8A5-77D57FC85BAC}"
+	ProjectSection(SolutionItems) = preProject
+		src\Directory.Build.props = src\Directory.Build.props
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{27BE0661-DCC9-431F-B162-F0C557216818}"
 EndProject
