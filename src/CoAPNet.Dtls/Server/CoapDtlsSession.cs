@@ -147,9 +147,9 @@ namespace CoAPNet.Dtls.Server
             return Task.CompletedTask;
         }
 
-        public void Accept(DtlsServerProtocol serverProtocol, TlsServer server)
+        public async Task AcceptAsync(DtlsServerProtocol serverProtocol, TlsServer server)
         {
-            _dtlsTransport = serverProtocol.Accept(server, _udpTransport);
+            _dtlsTransport = await Task.Factory.StartNew(() => serverProtocol.Accept(server, _udpTransport), TaskCreationOptions.LongRunning);
 
             // run Receive() as many times as we have packets in queue
             // first assign Semaphore and then read QueueCount to

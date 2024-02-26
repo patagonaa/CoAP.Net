@@ -15,5 +15,9 @@ namespace CoAPNet.Dtls.Server
         /// Session timeout (inactivity period) after which a session with a connection id is closed.
         /// </summary>
         public TimeSpan SessionTimeoutWithCid { get; set; } = TimeSpan.FromHours(1);
+        /// <summary>
+        /// Number of simultaneous handshakes. If exceeded, server will wait until other handshakes finish before starting new ones.
+        /// </summary>
+        public int MaxSimultaneousHandshakes { get; set; } = 1000;
     }
 }
