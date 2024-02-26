@@ -27,6 +27,7 @@ namespace CoAPNet.Dtls.Server
         private readonly DtlsSessionStore<CoapDtlsSession> _sessions;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly BlockingCollection<UdpSendPacket> _sendQueue = new BlockingCollection<UdpSendPacket>();
+        private readonly SemaphoreSlim _simultaneousHandshakeSemaphore = new SemaphoreSlim(0);
 
         private UdpClient? _socket;
 
@@ -113,6 +114,8 @@ namespace CoAPNet.Dtls.Server
             _socket.Client.Bind(_endPoint.IPEndPoint);
 
             _logger.LogInformation("Bound to Endpoint {IPEndpoint}", _endPoint.IPEndPoint);
+
+            _simultaneousHandshakeSemaphore.Release(_config.MaxSimultaneousHandshakes);
 
             _incomingTask = Task.Run(HandleIncoming);
             _outgoingTask = Task.Run(HandleOutgoing);
@@ -208,7 +211,7 @@ namespace CoAPNet.Dtls.Server
                 _sessions.Add(session);
                 _logger.LogInformation("New connection from {EndPoint}; Active Sessions: {ActiveSessions}", endpoint, _sessions.GetCount());
 
-                _ = Task.Factory.StartNew(() => HandleSession(session), TaskCreationOptions.LongRunning);
+                _ = Task.Run(() => HandleSession(session, _cts.Token));
             }
             catch (Exception ex)
             {
@@ -277,7 +280,7 @@ namespace CoAPNet.Dtls.Server
             }
         }
 
-        private async Task HandleSession(CoapDtlsSession session)
+        private async Task HandleSession(CoapDtlsSession session, CancellationToken cancellationToken)
         {
             var state = new Dictionary<string, object>
                 {
@@ -293,8 +296,23 @@ namespace CoAPNet.Dtls.Server
 
                     try
                     {
-                        session.Accept(_serverProtocol, server);
+                        if (!await _simultaneousHandshakeSemaphore.WaitAsync(server.GetHandshakeTimeoutMillis(), cancellationToken))
+                            throw new TimeoutException("Timeout waiting for simultaneous handshake limit");
+                        try
+                        {
+                            await session.AcceptAsync(_serverProtocol, server);
+                        }
+                        finally
+                        {
+                            _simultaneousHandshakeSemaphore.Release();
+                        }
+
                         Interlocked.Increment(ref _handshakeSuccessCount);
+                    }
+                    catch (TimeoutException)
+                    {
+                        Interlocked.Increment(ref _handshakeTimeoutErrorCount);
+                        throw;
                     }
                     catch (TlsTimeoutException)
                     {
@@ -323,7 +341,6 @@ namespace CoAPNet.Dtls.Server
 
                         var connectionInfo = new CoapDtlsConnectionInformation(_endPoint, session, server);
 
-                        var cancellationToken = _cts.Token;
                         while (true)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
@@ -333,7 +350,7 @@ namespace CoAPNet.Dtls.Server
                             {
                                 _logger.LogDebug("Handling CoAP Packet");
                                 await _coapHandler.ProcessRequestAsync(connectionInfo, packet.Payload);
-                                _logger.LogDebug("CoAP request handled!", session.EndPoint);
+                                _logger.LogDebug("CoAP request handled!");
                             }
                         }
                     }
@@ -343,6 +360,10 @@ namespace CoAPNet.Dtls.Server
                     _logger.LogDebug(ex, "Session was canceled");
                 }
                 catch (TlsTimeoutException timeoutEx)
+                {
+                    _logger.LogInformation(timeoutEx, "Timeout while handling session");
+                }
+                catch (TimeoutException timeoutEx)
                 {
                     _logger.LogInformation(timeoutEx, "Timeout while handling session");
                 }
