@@ -1,5 +1,8 @@
 # Change Log for CoAP.Net
 
+### v0.16.3
+- [#15](https://github.com/patagonaa/CoAP.Net/pull/15) DTLS: add limit for simultaneous handshakes
+
 ### v0.16.2
 - [`7a84d6f5`](https://github.com/patagonaa/CoAP.Net/commit/7a84d6f5) DTLS: fix possible race condition when accepting session while searching for it
 
