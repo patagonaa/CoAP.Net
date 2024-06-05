@@ -1,5 +1,8 @@
 # Change Log for CoAP.Net
 
+### v0.16.4
+- [#16](https://github.com/patagonaa/CoAP.Net/pull/16) DTLS: limit number of threads when applying handshake limit
+
 ### v0.16.3
 - [#15](https://github.com/patagonaa/CoAP.Net/pull/15) DTLS: add limit for simultaneous handshakes
 
