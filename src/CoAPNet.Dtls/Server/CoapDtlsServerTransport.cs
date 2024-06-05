@@ -199,8 +199,14 @@ namespace CoAPNet.Dtls.Server
             }
         }
 
-        private CoapDtlsSession StartNewSession(IPEndPoint endpoint)
+        private CoapDtlsSession? StartNewSession(IPEndPoint endpoint)
         {
+            if (!_simultaneousHandshakeSemaphore.Wait(0))
+            {
+                _logger.LogWarning("Discarding NewSession packet due to handshake limit");
+                return null;
+            }
+
             var session = new CoapDtlsSession(
                 endpoint,
                 NetworkMtu,
@@ -217,6 +223,7 @@ namespace CoAPNet.Dtls.Server
             {
                 _logger.LogError(ex, "Exception while starting session handler!");
                 _sessions.Remove(session);
+                _simultaneousHandshakeSemaphore.Release();
                 session.Dispose();
                 throw;
             }
@@ -292,20 +299,13 @@ namespace CoAPNet.Dtls.Server
                 {
                     _logger.LogDebug("Trying to accept TLS connection from {EndPoint}", session.EndPoint);
 
-                    var server = _tlsServerFactory.Create();
+                    TlsServer server;
 
                     try
                     {
-                        if (!await _simultaneousHandshakeSemaphore.WaitAsync(server.GetHandshakeTimeoutMillis(), cancellationToken))
-                            throw new TimeoutException("Timeout waiting for simultaneous handshake limit");
-                        try
-                        {
-                            await session.AcceptAsync(_serverProtocol, server);
-                        }
-                        finally
-                        {
-                            _simultaneousHandshakeSemaphore.Release();
-                        }
+                        server = _tlsServerFactory.Create();
+
+                        await session.AcceptAsync(_serverProtocol, server);
 
                         Interlocked.Increment(ref _handshakeSuccessCount);
                     }
@@ -329,6 +329,11 @@ namespace CoAPNet.Dtls.Server
                         Interlocked.Increment(ref _handshakeErrorCount);
                         throw;
                     }
+                    finally
+                    {
+                        _simultaneousHandshakeSemaphore.Release();
+                    }
+
                     if (session.ConnectionId != null)
                     {
                         SetConnectionIdLength(session.ConnectionId.Length);
