@@ -12,8 +12,12 @@ namespace CoAPNet.Dtls.Client
         private const int NetworkMtu = 1500;
 
         private readonly TlsClient _tlsClient;
-        private DtlsTransport? _datagramTransport;
+        private readonly SemaphoreSlim _ensureConnectedSemaphore = new SemaphoreSlim(1, 1);
+
+        private UdpDatagramTransport? _udpTransport;
+        private DtlsTransport? _dtlsTransport;
         private bool _isConnected = false;
+        private Task _connectTask;
 
         public CoapDtlsClientEndPoint(string server, int port, TlsClient tlsClient)
         {
@@ -28,12 +32,12 @@ namespace CoAPNet.Dtls.Client
 
         public async Task<CoapPacket> ReceiveAsync(CancellationToken token)
         {
-            EnsureConnected();
+            await EnsureConnected(token);
 
-            if (_datagramTransport == null)
+            if (_dtlsTransport == null)
                 throw new InvalidOperationException("Session must be established before sending/receiving any data.");
 
-            var bufLen = _datagramTransport.GetReceiveLimit();
+            var bufLen = _dtlsTransport.GetReceiveLimit();
             var buffer = new byte[bufLen];
 
             // we use a long running task here so we don't block the calling thread till we're done waiting, but start a new one and yield instead
@@ -44,7 +48,7 @@ namespace CoAPNet.Dtls.Client
                     token.ThrowIfCancellationRequested();
                     // we can't cancel waiting for a packet (BouncyCastle doesn't support this), so there will be a bit of delay between cancelling and actually stopping trying to receive.
                     // there is a wait timeout of 5000ms to close the CoapEndPoint, this has to be less than that.
-                    int received = _datagramTransport.Receive(buffer, 0, bufLen, 1000);
+                    int received = _dtlsTransport.Receive(buffer, 0, bufLen, 1000);
 
                     if (received > 0)
                     {
@@ -58,40 +62,69 @@ namespace CoAPNet.Dtls.Client
             }, TaskCreationOptions.LongRunning);
         }
 
-        public Task SendAsync(CoapPacket packet, CancellationToken token)
+        public async Task SendAsync(CoapPacket packet, CancellationToken token)
         {
-            EnsureConnected();
+            await EnsureConnected(token);
             if (packet.Endpoint != this)
                 throw new InvalidOperationException("Endpoint can only send its own packets");
-            if (_datagramTransport == null)
+            if (_dtlsTransport == null)
                 throw new InvalidOperationException("Session must be established before sending/receiving any data.");
 
             var bytes = packet.Payload;
-            _datagramTransport.Send(bytes, 0, bytes.Length);
-            return Task.CompletedTask;
+            _dtlsTransport.Send(bytes, 0, bytes.Length);
         }
 
-        private readonly object _ensureConnectedLock = new object();
-        private void EnsureConnected()
+        private async Task EnsureConnected(CancellationToken token)
         {
-            lock (_ensureConnectedLock)
+            if (_isConnected)
+                return;
+
+            await _ensureConnectedSemaphore.WaitAsync(token);
+            try
             {
-                if (_isConnected)
-                    return;
+                if (_connectTask == null)
+                    _connectTask = Task.Factory.StartNew(() => Connect(), TaskCreationOptions.LongRunning);
 
-                var udpClient = new UdpClient(Server, Port);
-
-                var dtlsClientProtocol = new DtlsClientProtocol();
-                _datagramTransport = dtlsClientProtocol.Connect(_tlsClient, new UdpDatagramTransport(udpClient, NetworkMtu));
-                _isConnected = true;
+                // this is basically doing "await _connectTask.WaitAsync(token);", but that isn't available in .NET Standard 2.0
+                await Task.WhenAny(_connectTask, Task.Delay(Timeout.Infinite, token));
+                token.ThrowIfCancellationRequested();
+                await _connectTask;
             }
+            finally
+            {
+                _ensureConnectedSemaphore.Release();
+            }
+        }
+
+        private void Connect()
+        {
+            var udpClient = new UdpClient(Server, Port);
+
+            var dtlsClientProtocol = new DtlsClientProtocol();
+            _udpTransport = new UdpDatagramTransport(udpClient, NetworkMtu);
+            _dtlsTransport = dtlsClientProtocol.Connect(_tlsClient, _udpTransport);
+
+            _isConnected = true;
         }
 
         public override string ToString() => $"udp+dtls://{Server}:{Port}";
 
         public void Dispose()
         {
-            _datagramTransport?.Close();
+            if (_dtlsTransport != null)
+            {
+                _dtlsTransport.Close();
+            }
+            else
+            {
+                _udpTransport?.Close();
+            }
+
+            if (_connectTask != null)
+            {
+                if (!_connectTask.Wait(5000))
+                    throw new TimeoutException($"Timeout while trying to dispose {nameof(CoapDtlsClientEndPoint)}");
+            }
         }
 
         public Task<ICoapEndpointInfo> GetEndpointInfoFromMessage(CoapMessage message)
