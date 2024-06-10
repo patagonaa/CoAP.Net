@@ -13,8 +13,8 @@ namespace CoAPNet.Dtls.Client
 
         private readonly TlsClient _tlsClient;
         private readonly SemaphoreSlim _ensureConnectedSemaphore = new SemaphoreSlim(1, 1);
+        private readonly UdpDatagramTransport _udpTransport;
 
-        private UdpDatagramTransport? _udpTransport;
         private DtlsTransport? _dtlsTransport;
         private bool _isConnected = false;
         private Task _connectTask;
@@ -23,6 +23,10 @@ namespace CoAPNet.Dtls.Client
         {
             Server = server;
             Port = port;
+
+            var udpClient = new UdpClient(Server, Port);
+            _udpTransport = new UdpDatagramTransport(udpClient, NetworkMtu);
+
             _tlsClient = tlsClient;
         }
 
@@ -98,10 +102,7 @@ namespace CoAPNet.Dtls.Client
 
         private void Connect()
         {
-            var udpClient = new UdpClient(Server, Port);
-
             var dtlsClientProtocol = new DtlsClientProtocol();
-            _udpTransport = new UdpDatagramTransport(udpClient, NetworkMtu);
             _dtlsTransport = dtlsClientProtocol.Connect(_tlsClient, _udpTransport);
 
             _isConnected = true;
@@ -117,7 +118,7 @@ namespace CoAPNet.Dtls.Client
             }
             else
             {
-                _udpTransport?.Close();
+                _udpTransport.Close();
             }
 
             if (_connectTask != null)
